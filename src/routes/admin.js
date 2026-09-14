@@ -427,6 +427,23 @@ function generateTempPassword() {
   return crypto.randomBytes(18).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
 }
 
+// Emails a freshly (re)generated password straight to the admin it belongs
+// to - not just to whoever clicked the button - so there's one source of
+// truth for it and nobody has to relay it by hand. Falls back to showing
+// it in the flash message if the send itself fails, so it's never lost.
+async function sendCredentialsEmail(admin, tempPassword, { subject, intro }) {
+  const result = await mailer.sendEmail({
+    to: admin.email,
+    toName: admin.name,
+    subject,
+    html:
+      `<p>${intro}</p>` +
+      `<p>Email: ${admin.email}<br/>Password: ${tempPassword}</p>` +
+      `<p>Please log in and change this password immediately.</p>`,
+  });
+  return result.sent;
+}
+
 // ---------- Admin users (roles & permissions) ----------
 
 router.get("/users", requireAdmin, requirePermission("manage_admins"), (req, res) => {
@@ -461,11 +478,18 @@ router.post("/users", requireAdmin, requirePermission("manage_admins"), async (r
   }
 
   const tempPassword = generateTempPassword();
-  db.createAdminUser({ name, email, role, passwordHash: await bcrypt.hash(tempPassword, 10) });
+  const admin = db.createAdminUser({ name, email, role, passwordHash: await bcrypt.hash(tempPassword, 10) });
+
+  const emailed = await sendCredentialsEmail(admin, tempPassword, {
+    subject: "Your Trinity Securities admin account",
+    intro: "An admin account has been created for you on the Trinity Securities Offers Portal.",
+  });
 
   req.flash(
     "success",
-    `Admin created: ${email} / ${tempPassword} - share this securely, it will not be shown again.`
+    emailed
+      ? `Admin created: ${email} - their login details have been emailed to them.`
+      : `Admin created: ${email} / ${tempPassword} - could not email it, share this securely instead.`
   );
   res.redirect("/admin/users");
 });
@@ -526,9 +550,16 @@ router.post("/users/:id/reset-password", requireAdmin, requirePermission("manage
   const tempPassword = generateTempPassword();
   db.updateAdminPassword(target.id, await bcrypt.hash(tempPassword, 10));
 
+  const emailed = await sendCredentialsEmail(target, tempPassword, {
+    subject: "Your Trinity Securities admin password has been reset",
+    intro: "Your admin password on the Trinity Securities Offers Portal has been reset.",
+  });
+
   req.flash(
     "success",
-    `Password reset for ${target.email}: ${tempPassword} - share this securely, it will not be shown again.`
+    emailed
+      ? `Password reset for ${target.email} - the new password has been emailed to them.`
+      : `Password reset for ${target.email}: ${tempPassword} - could not email it, share this securely instead.`
   );
   res.redirect("/admin/users");
 });
