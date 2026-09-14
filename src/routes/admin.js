@@ -35,6 +35,61 @@ router.post("/logout", (req, res) => {
   res.redirect("/admin/login");
 });
 
+// ---------- My profile (any signed-in admin) ----------
+
+router.get("/profile", requireAdmin, (req, res) => {
+  res.render("admin/profile", { title: "My Profile", layout: "admin-layout" });
+});
+
+router.post("/profile", requireAdmin, async (req, res) => {
+  const name = (req.body.name || "").trim();
+  const email = (req.body.email || "").trim().toLowerCase();
+  const admin = db.getAdminById(req.session.adminId);
+
+  if (!name || !email) {
+    req.flash("error", "Name and email are required.");
+    return res.redirect("/admin/profile");
+  }
+  if (!(await bcrypt.compare(req.body.currentPassword || "", admin.passwordHash))) {
+    req.flash("error", "Current password is incorrect.");
+    return res.redirect("/admin/profile");
+  }
+  if (email !== admin.email) {
+    const existing = db.findAdminByEmail(email);
+    if (existing && existing.id !== admin.id) {
+      req.flash("error", "That email is already in use by another admin.");
+      return res.redirect("/admin/profile");
+    }
+  }
+
+  db.updateAdminProfile(admin.id, { name, email });
+  req.session.adminName = name;
+  req.flash("success", "Profile updated.");
+  res.redirect("/admin/profile");
+});
+
+router.post("/profile/password", requireAdmin, async (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+  const admin = db.getAdminById(req.session.adminId);
+
+  if (!(await bcrypt.compare(currentPassword || "", admin.passwordHash))) {
+    req.flash("error", "Current password is incorrect.");
+    return res.redirect("/admin/profile");
+  }
+  if (!newPassword || newPassword.length < 8) {
+    req.flash("error", "New password must be at least 8 characters.");
+    return res.redirect("/admin/profile");
+  }
+  if (newPassword !== confirmPassword) {
+    req.flash("error", "New passwords do not match.");
+    return res.redirect("/admin/profile");
+  }
+
+  db.updateAdminPassword(admin.id, await bcrypt.hash(newPassword, 10));
+  req.flash("success", "Password changed.");
+  res.redirect("/admin/profile");
+});
+
 // ---------- Dashboard ----------
 
 router.get("/", requireAdmin, (req, res) => {

@@ -1,0 +1,42 @@
+<div class="max-w-lg space-y-6">
+  <div class="bg-white rounded-xl border border-navy-100 p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-bold text-navy-800">My Profile</h2>
+      <span class="text-xs font-semibold px-2 py-1 rounded-full bg-navy-50 text-navy-600"><%= roleLabel(currentAdmin.role) %></span>
+    </div>
+    <form action="/admin/profile" method="POST" class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-navy-700 mb-1">Full name</label>
+        <input name="name" required value="<%= currentAdmin.name %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-navy-700 mb-1">Email</label>
+        <input type="email" name="email" required value="<%= currentAdmin.email %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-navy-700 mb-1">Current password</label>
+        <input type="password" name="currentPassword" required class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="Confirm it's you" />
+      </div>
+      <button type="submit" class="bg-navy-700 hover:bg-navy-800 text-white font-bold py-2.5 px-5 rounded-xl text-sm">Save changes</button>
+    </form>
+  </div>
+
+  <div class="bg-white rounded-xl border border-navy-100 p-6">
+    <h2 class="font-bold text-navy-800 mb-4">Change Password</h2>
+    <form action="/admin/profile/password" method="POST" class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-navy-700 mb-1">Current password</label>
+        <input type="password" name="currentPassword" required class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-navy-700 mb-1">New password</label>
+        <input type="password" name="newPassword" required minlength="8" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-navy-700 mb-1">Confirm new password</label>
+        <input type="password" name="confirmPassword" required minlength="8" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      </div>
+      <button type="submit" class="bg-navy-700 hover:bg-navy-800 text-white font-bold py-2.5 px-5 rounded-xl text-sm">Change password</button>
+    </form>
+  </div>
+</div>

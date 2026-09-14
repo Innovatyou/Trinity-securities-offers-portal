@@ -445,6 +445,11 @@ function updateAdminPassword(id, passwordHash) {
   return getAdminById(id);
 }
 
+function updateAdminProfile(id, { name, email }) {
+  db.prepare(`UPDATE admin_users SET name = ?, email = ? WHERE id = ?`).run(name, email, id);
+  return getAdminById(id);
+}
+
 module.exports = {
   raw: db,
   listOffers,
@@ -469,4 +474,5 @@ module.exports = {
   createAdminUser,
   updateAdminUser,
   updateAdminPassword,
+  updateAdminProfile,
 };
