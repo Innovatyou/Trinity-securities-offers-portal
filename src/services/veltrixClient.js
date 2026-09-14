@@ -5,9 +5,12 @@
  * uses. Both are documented from inside Veltrix itself:
  *
  *  - Verify Partner API (`/api/verify/v1`) - BVN/NIN identity lookups.
- *    Auth: `Authorization: Bearer <key_id>.<secret>`, a credential issued
- *    at Veltrix > Customer > Verify > API Access (scope: kyc). Docs at
- *    Veltrix > Customer > Verify > API Access > Docs.
+ *    Auth: `Authorization: Bearer <credential>`, where <credential> is the
+ *    single `key_id.secret` string Veltrix shows ONCE, in one copy box, right
+ *    after you click "Create credential" at Veltrix > Customer > Verify >
+ *    API Access (scope: kyc). There is no separate "Key ID" field to hunt
+ *    for afterwards - copy that one string whole into VELTRIX_VERIFY_CREDENTIAL.
+ *    Docs at Veltrix > Customer > Verify > API Access > Docs.
  *
  *  - Customer API (`/api/v1`) - transactional email + SMS.
  *    Auth: `X-MW-PUBLIC-KEY: <api_key>`, a key issued at
@@ -39,12 +42,11 @@ async function postJson(path, body, headers) {
 }
 
 function partnerHeaders() {
-  const keyId = process.env.VELTRIX_VERIFY_KEY_ID || "";
-  const secret = process.env.VELTRIX_VERIFY_SECRET || "";
-  if (!keyId || !secret) {
-    throw new Error("VELTRIX_VERIFY_KEY_ID / VELTRIX_VERIFY_SECRET are not set.");
+  const credential = process.env.VELTRIX_VERIFY_CREDENTIAL || "";
+  if (!credential) {
+    throw new Error("VELTRIX_VERIFY_CREDENTIAL is not set.");
   }
-  return { Authorization: `Bearer ${keyId}.${secret}` };
+  return { Authorization: `Bearer ${credential}` };
 }
 
 function customerApiHeaders() {

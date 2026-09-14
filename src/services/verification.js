@@ -9,9 +9,9 @@
  *
  * VERIFICATION_MODE=LIVE: routes both checks through Veltrix Verify's
  * partner API (`/api/verify/v1/kyc/identity`), which itself sits in front
- * of NIMC/NIBSS registries. Set VELTRIX_BASE_URL, VELTRIX_VERIFY_KEY_ID
- * and VELTRIX_VERIFY_SECRET (issued at Veltrix > Customer > Verify > API
- * Access, scope "kyc") in .env. Every caller still only ever talks to
+ * of NIMC/NIBSS registries. Set VELTRIX_BASE_URL and VELTRIX_VERIFY_CREDENTIAL
+ * (the one-time `key_id.secret` string issued at Veltrix > Customer > Verify
+ * > API Access, scope "kyc") in .env. Every caller still only ever talks to
  * verifyBVN()/verifyNIN() below.
  * -----------------------------------------------------------------------
  */
