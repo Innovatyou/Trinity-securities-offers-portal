@@ -160,3 +160,12 @@ su - admintsl -c 'cd ~/ipo-portal && npm run build:css && ~/.local/bin/pm2 resta
   the app isn't under `public_html` — nothing to lock down at the Apache level.
 - **Forms/notifications failing:** check `VELTRIX_*` env values and that `NOTIFICATIONS_MODE`/
   `OTP_DELIVERY_MODE`/`VERIFICATION_MODE` are actually set to `LIVE`, not left on `MOCK`.
+- **`.env` drifts out of sync with `.env.example`:** the live `.env` was created once via
+  `cp .env.example .env` at initial deploy and is never touched by `git pull` afterwards (it's
+  gitignored, on purpose — it holds secrets). Any setting added to `.env.example` in a later
+  commit (e.g. `EMAIL_DELIVERY_PROVIDER`/`SMTP_*` were added well after this site's first
+  deploy) simply won't exist in the live `.env` at all — not blank, **absent**. A `sed` edit
+  aimed at an existing `KEY=""` line will silently no-op if that key was never there to begin
+  with. After pulling a change that touches `.env.example`, diff the two
+  (`diff <(grep -oE '^[A-Z_]+' .env.example) <(grep -oE '^[A-Z_]+' .env)`) and append whatever's
+  missing rather than assuming a `sed` replace did anything.
