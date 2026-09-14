@@ -51,6 +51,7 @@ async function sendViaSmtp({ to, toName = "", subject, html }) {
     await getSmtpTransport().sendMail({
       from: `"${fromName}" <${fromAddress}>`,
       to: toName ? `"${toName}" <${to}>` : to,
+      replyTo: process.env.VELTRIX_EMAIL_REPLY_TO || undefined,
       subject,
       html,
     });

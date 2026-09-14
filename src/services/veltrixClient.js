@@ -124,6 +124,7 @@ async function sendEmail({ to, toName = "", subject, html }) {
       body: html,
       from_email: process.env.VELTRIX_EMAIL_FROM || undefined,
       from_name: process.env.VELTRIX_EMAIL_FROM_NAME || "Trinity Securities Limited",
+      reply_to_email: process.env.VELTRIX_EMAIL_REPLY_TO || undefined,
     },
     customerApiHeaders()
   );
