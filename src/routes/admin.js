@@ -6,6 +6,7 @@ const { requireAdmin, requirePermission } = require("../middleware/adminAuth");
 const { handleAvatarUpload, deleteAvatarFile } = require("../middleware/upload");
 const { roleOptions } = require("../services/permissions");
 const veltrix = require("../services/veltrixClient");
+const mailer = require("../services/mailer");
 
 const router = express.Router();
 
@@ -339,7 +340,7 @@ async function notifySubscriber(subscription, { subject, message }) {
 
   try {
     if (subscriber.email) {
-      await veltrix.sendEmail({ to: subscriber.email, toName: subscriber.fullName, subject, html: `<p>${message}</p>` });
+      await mailer.sendEmail({ to: subscriber.email, toName: subscriber.fullName, subject, html: `<p>${message}</p>` });
     }
     if (subscriber.phone) {
       await veltrix.sendSms({ to: subscriber.phone, message });

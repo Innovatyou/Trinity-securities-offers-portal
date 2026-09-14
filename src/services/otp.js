@@ -9,15 +9,16 @@
  * in the response (`devCode`) instead of dispatching it, so the flow can
  * be tested with no live credentials.
  *
- * OTP_DELIVERY_MODE=LIVE: emails or texts the code through Veltrix
- * (Customer API `/api/v1`) depending on whether `destination` looks like
- * an email address or a phone number. Set VELTRIX_BASE_URL and
- * VELTRIX_API_KEY (Veltrix > Customer > API Keys) in .env; SMS delivery
- * also needs VELTRIX_SMS_SENDER_ID set to an approved sender ID.
+ * OTP_DELIVERY_MODE=LIVE: emails or texts the code, depending on whether
+ * `destination` looks like an email address or a phone number. Email goes
+ * through whichever provider EMAIL_DELIVERY_PROVIDER selects (see
+ * mailer.js); SMS always goes through Veltrix (Customer API `/api/v1`) -
+ * set VELTRIX_BASE_URL, VELTRIX_API_KEY and VELTRIX_SMS_SENDER_ID.
  * -----------------------------------------------------------------------
  */
 
 const veltrix = require("./veltrixClient");
+const mailer = require("./mailer");
 
 const MODE = process.env.OTP_DELIVERY_MODE || "MOCK";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,7 +31,7 @@ async function dispatchLive(destination, code) {
   const message = `Your Trinity Securities Offers Portal verification code is ${code}. It expires shortly - do not share it.`;
 
   if (EMAIL_RE.test(destination)) {
-    const result = await veltrix.sendEmail({
+    const result = await mailer.sendEmail({
       to: destination,
       subject: "Your verification code",
       html: `<p>${message}</p>`,
