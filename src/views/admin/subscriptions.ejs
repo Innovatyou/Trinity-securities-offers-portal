@@ -47,6 +47,16 @@
                 <button class="font-semibold text-red-600 hover:underline">Reject</button>
               </form>
             <% } %>
+            <% if (sub.status === 'CONFIRMED') { %>
+              <a href="/admin/subscriptions/<%= sub.id %>/receipt.pdf" class="font-semibold text-navy-700 hover:underline">Download PDF</a>
+              <% if (sub.subscriber && sub.subscriber.email) { %>
+                <form action="/admin/subscriptions/<%= sub.id %>/receipt/email" method="POST" class="inline">
+                  <button class="font-semibold text-navy-700 hover:underline">Email Receipt</button>
+                </form>
+              <% } else { %>
+                <span class="text-navy-300 cursor-not-allowed" title="This investor verified by phone - no email on file">Email Receipt</span>
+              <% } %>
+            <% } %>
           </td>
         </tr>
       <% }) %>

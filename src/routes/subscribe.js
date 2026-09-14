@@ -1,6 +1,6 @@
 const express = require("express");
 const db = require("../db");
-const { sendOtp, verifyOtp } = require("../services/otp");
+const { sendOtp, verifyOtp, EMAIL_RE } = require("../services/otp");
 const { loadSubscription } = require("../middleware/subscriptionFlow");
 
 const router = express.Router({ mergeParams: true });
@@ -123,7 +123,20 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     minorId = minor.id;
   }
 
-  const subscriber = db.upsertSubscriberByBvn({ bvn: verifiedBvn.value, fullName: verifiedBvn.fullName });
+  // Whichever channel they verified with at the Security step (session.otp
+  // is only cleared on a fresh send-otp, so it's still there at this point).
+  const otpSession = req.session.otp;
+  const verifiedDestination =
+    otpSession && otpSession.subscriptionId === subscription.id ? otpSession.destination : null;
+  const contactEmail = verifiedDestination && EMAIL_RE.test(verifiedDestination) ? verifiedDestination : null;
+  const contactPhone = verifiedDestination && !EMAIL_RE.test(verifiedDestination) ? verifiedDestination : null;
+
+  const subscriber = db.upsertSubscriberByBvn({
+    bvn: verifiedBvn.value,
+    fullName: verifiedBvn.fullName,
+    email: contactEmail,
+    phone: contactPhone,
+  });
 
   db.updateSubscription(subscription.id, {
     subscriberId: subscriber.id,

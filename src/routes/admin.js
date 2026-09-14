@@ -7,6 +7,7 @@ const { handleAvatarUpload, deleteAvatarFile } = require("../middleware/upload")
 const { roleOptions } = require("../services/permissions");
 const veltrix = require("../services/veltrixClient");
 const mailer = require("../services/mailer");
+const receipt = require("../services/receipt");
 
 const router = express.Router();
 
@@ -206,6 +207,61 @@ router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("manage
     message: `Your subscription (ref. ${subscription.reference}) for ${subscription.offer.name} could not be confirmed. Please contact Trinity Securities Limited for details.`,
   });
   req.flash("success", "Subscription rejected.");
+  res.redirect("/admin/subscriptions");
+});
+
+// A receipt only makes sense once a subscription is actually CONFIRMED.
+function loadConfirmedSubscription(req, res) {
+  const subscription = db.getSubscriptionById(req.params.id);
+  if (!subscription || subscription.status !== "CONFIRMED") {
+    req.flash("error", "Receipts are only available for confirmed subscriptions.");
+    res.redirect("/admin/subscriptions");
+    return null;
+  }
+  return subscription;
+}
+
+router.get("/subscriptions/:id/receipt.pdf", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
+  const subscription = loadConfirmedSubscription(req, res);
+  if (!subscription) return;
+
+  const pdfBuffer = await receipt.renderReceiptPdf(receipt.buildReceiptData(subscription));
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="Receipt-${subscription.reference}.pdf"`,
+  });
+  res.send(pdfBuffer);
+});
+
+router.post("/subscriptions/:id/receipt/email", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
+  const subscription = loadConfirmedSubscription(req, res);
+  if (!subscription) return;
+
+  const investorEmail = subscription.subscriber && subscription.subscriber.email;
+  if (!investorEmail) {
+    req.flash("error", "This investor has no email on file (they verified by phone) - nothing to send to.");
+    return res.redirect("/admin/subscriptions");
+  }
+
+  const data = receipt.buildReceiptData(subscription);
+  try {
+    const pdfBuffer = await receipt.renderReceiptPdf(data);
+    const result = await mailer.sendEmail({
+      to: investorEmail,
+      toName: data.investorName,
+      subject: `Your payment receipt - ${data.receiptNo}`,
+      html: receipt.renderReceiptHtml(data),
+      attachments: [{ filename: `Receipt-${data.receiptNo}.pdf`, content: pdfBuffer }],
+    });
+    if (!result.sent) {
+      req.flash("error", `Could not send the receipt: ${result.message || "unknown error"}`);
+    } else {
+      req.flash("success", `Receipt emailed to ${investorEmail}.`);
+    }
+  } catch (err) {
+    console.error("Receipt email failed:", err.message);
+    req.flash("error", "Could not send the receipt. Please try again.");
+  }
   res.redirect("/admin/subscriptions");
 });
 

@@ -303,16 +303,22 @@ function getSubscriberByBvn(bvn) {
   return rowToSubscriber(db.prepare(`SELECT * FROM subscribers WHERE bvn = ?`).get(bvn));
 }
 
-function upsertSubscriberByBvn({ bvn, fullName }) {
+// email/phone are whatever the subscriber verified with at the Security
+// step (see subscribe.js) - optional, and only overwrite an existing value
+// when a new one is actually supplied (COALESCE), so a returning subscriber
+// verifying with the other channel doesn't blank out the one already on file.
+function upsertSubscriberByBvn({ bvn, fullName, email, phone }) {
   const existing = getSubscriberByBvn(bvn);
   if (existing) {
-    db.prepare(`UPDATE subscribers SET bvn_verified = 1, full_name = ? WHERE id = ?`).run(fullName, existing.id);
+    db.prepare(
+      `UPDATE subscribers SET bvn_verified = 1, full_name = ?, email = COALESCE(?, email), phone = COALESCE(?, phone) WHERE id = ?`
+    ).run(fullName, email || null, phone || null, existing.id);
     return getSubscriberById(existing.id);
   }
   const id = genId();
   db.prepare(
-    `INSERT INTO subscribers (id, full_name, bvn, bvn_verified, created_at) VALUES (?, ?, ?, 1, ?)`
-  ).run(id, fullName, bvn, now());
+    `INSERT INTO subscribers (id, full_name, bvn, bvn_verified, email, phone, created_at) VALUES (?, ?, ?, 1, ?, ?, ?)`
+  ).run(id, fullName, bvn, email || null, phone || null, now());
   return getSubscriberById(id);
 }
 

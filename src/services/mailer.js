@@ -40,7 +40,7 @@ function getSmtpTransport() {
   return transport;
 }
 
-async function sendViaSmtp({ to, toName = "", subject, html }) {
+async function sendViaSmtp({ to, toName = "", subject, html, attachments }) {
   const fromAddress = process.env.VELTRIX_EMAIL_FROM || process.env.SMTP_USER || "";
   if (!fromAddress) {
     throw new Error("VELTRIX_EMAIL_FROM (or SMTP_USER) is not set - needed as the SMTP \"from\" address.");
@@ -54,6 +54,7 @@ async function sendViaSmtp({ to, toName = "", subject, html }) {
       replyTo: process.env.VELTRIX_EMAIL_REPLY_TO || undefined,
       subject,
       html,
+      attachments,
     });
     return { sent: true };
   } catch (err) {
@@ -63,11 +64,20 @@ async function sendViaSmtp({ to, toName = "", subject, html }) {
 }
 
 /**
- * @param {{to: string, toName?: string, subject: string, html: string}} params
+ * @param {{to: string, toName?: string, subject: string, html: string, attachments?: {filename: string, content: Buffer}[]}} params
+ *   `attachments` is only honored by the SMTP provider - Veltrix's transactional-emails API has no
+ *   attachment field, so it's silently dropped there (the HTML body still carries the same content).
  * @returns {Promise<{sent: boolean, message?: string}>}
  */
 async function sendEmail(params) {
-  return provider() === "SMTP" ? sendViaSmtp(params) : veltrix.sendEmail(params);
+  if (provider() === "SMTP") {
+    return sendViaSmtp(params);
+  }
+  if (params.attachments && params.attachments.length) {
+    console.warn("[mailer] EMAIL_DELIVERY_PROVIDER=VELTRIX cannot send attachments - sending body only.");
+  }
+  const { attachments, ...veltrixParams } = params;
+  return veltrix.sendEmail(veltrixParams);
 }
 
 module.exports = { sendEmail };

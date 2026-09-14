@@ -68,4 +68,4 @@ function verifyOtp(submitted, expected) {
   return Boolean(submitted) && Boolean(expected) && submitted === expected;
 }
 
-module.exports = { sendOtp, verifyOtp };
+module.exports = { sendOtp, verifyOtp, EMAIL_RE };
