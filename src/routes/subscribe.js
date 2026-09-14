@@ -1,7 +1,8 @@
 const express = require("express");
 const db = require("../db");
-const { sendOtp, verifyOtp, EMAIL_RE } = require("../services/otp");
 const { loadSubscription } = require("../middleware/subscriptionFlow");
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const router = express.Router({ mergeParams: true });
 
@@ -35,74 +36,18 @@ function bankDetails() {
   };
 }
 
-// ---------- Step 1: Security ----------
+// ---------- Step 1: Account (contact info + BVN + optional minor NIN) ----------
 
+// The flow used to start with a separate OTP "Security" screen; removed as
+// a friction/reliability point (SMS/email OTP delivery), but the flow's
+// entry point and loadSubscription()'s failure redirects still point at
+// this root path, so keep it as a thin redirect to the first real step.
 router.get("/", loadSubscription(0, STATUS_ORDER), (req, res) => {
-  const { subscription } = req;
-
-  if (req.session.securityVerifiedFor === subscription.id) {
-    return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
-  }
-
-  res.render("subscribe/security", {
-    title: "Security Verification",
-    offer: subscription.offer,
-    subscription,
-    layout: "subscribe-layout",
-    step: 1,
-  });
+  res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
 });
-
-router.post("/send-otp", loadSubscription(0, STATUS_ORDER), async (req, res) => {
-  const destination = (req.body.destination || "").trim();
-  if (!destination) {
-    return res.json({ ok: false, message: "Enter your registered email or phone number." });
-  }
-
-  try {
-    const { code, devCode } = await sendOtp(destination);
-    req.session.otp = { code, destination, subscriptionId: req.subscription.id };
-
-    // devCode is only present in OTP_DELIVERY_MODE=MOCK; in LIVE mode the code
-    // was already emailed/texted and never touches this response.
-    res.json({ ok: true, destination, devCode });
-  } catch (err) {
-    console.error("OTP dispatch failed:", err.message);
-    // Nudge toward the other channel right when the one they tried has
-    // failed - both are equally valid, so this is often the fastest fix.
-    const message = EMAIL_RE.test(destination)
-      ? "Could not send the verification code to that email. Please try again, or use your phone number instead."
-      : "Could not send the verification code to that phone number. Please try again, or use your email address instead.";
-    res.json({ ok: false, message });
-  }
-});
-
-router.post("/verify-otp", loadSubscription(0, STATUS_ORDER), (req, res) => {
-  const { code } = req.body;
-  const stored = req.session.otp;
-
-  const valid =
-    stored &&
-    stored.subscriptionId === req.subscription.id &&
-    verifyOtp(code, stored.code);
-
-  if (!valid) {
-    return res.json({ ok: false, message: "That code is incorrect or has expired." });
-  }
-
-  req.session.securityVerifiedFor = req.subscription.id;
-  res.json({ ok: true, redirectTo: `/offers/${req.params.offerId}/subscribe/account` });
-});
-
-// ---------- Step 2: Account (BVN + optional minor NIN) ----------
 
 router.get("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
   const { subscription } = req;
-
-  if (req.session.securityVerifiedFor !== subscription.id) {
-    req.flash("error", "Please complete security verification first.");
-    return res.redirect(`/offers/${req.params.offerId}/subscribe`);
-  }
 
   if (STATUS_ORDER.indexOf(subscription.status) >= STATUS_ORDER.indexOf("ACCOUNT_VERIFIED")) {
     return res.redirect(`/offers/${req.params.offerId}/subscribe/participation`);
@@ -113,7 +58,7 @@ router.get("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     offer: subscription.offer,
     subscription,
     layout: "subscribe-layout",
-    step: 2,
+    step: 1,
   });
 });
 
@@ -121,6 +66,12 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
   const { subscription } = req;
   const { subscriptionFor, bvn } = req.body;
   const isForMinor = subscriptionFor === "minor";
+
+  const contactDestination = (req.body.contactDestination || "").trim();
+  if (!contactDestination) {
+    req.flash("error", "Enter your email or phone number.");
+    return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
+  }
 
   const verifiedBvn = req.session.verifiedBvn;
   if (!verifiedBvn || verifiedBvn.value !== (bvn || "").trim()) {
@@ -141,13 +92,8 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     minorId = minor.id;
   }
 
-  // Whichever channel they verified with at the Security step (session.otp
-  // is only cleared on a fresh send-otp, so it's still there at this point).
-  const otpSession = req.session.otp;
-  const verifiedDestination =
-    otpSession && otpSession.subscriptionId === subscription.id ? otpSession.destination : null;
-  const contactEmail = verifiedDestination && EMAIL_RE.test(verifiedDestination) ? verifiedDestination : null;
-  const contactPhone = verifiedDestination && !EMAIL_RE.test(verifiedDestination) ? verifiedDestination : null;
+  const contactEmail = EMAIL_RE.test(contactDestination) ? contactDestination : null;
+  const contactPhone = EMAIL_RE.test(contactDestination) ? null : contactDestination;
 
   const subscriber = db.upsertSubscriberByBvn({
     bvn: verifiedBvn.value,
@@ -169,7 +115,7 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
   res.redirect(`/offers/${req.params.offerId}/subscribe/participation`);
 });
 
-// ---------- Step 3: Participation (shares + payment) ----------
+// ---------- Step 2: Participation (shares + payment) ----------
 
 router.get(
   "/participation",
@@ -188,7 +134,7 @@ router.get(
       subscriber: subscription.subscriber,
       bank: bankDetails(),
       layout: "subscribe-layout",
-      step: 3,
+      step: 2,
     });
   }
 );
@@ -257,7 +203,7 @@ router.get(
       offer: req.subscription.offer,
       subscription: req.subscription,
       layout: "subscribe-layout",
-      step: 3,
+      step: 2,
     });
   }
 );

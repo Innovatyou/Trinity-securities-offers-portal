@@ -60,10 +60,9 @@ Fill in `.env` before going live:
   `VELTRIX_EMAIL_FROM*`, `VELTRIX_SMS_SENDER_ID` — from Trinity's Veltrix customer account
   (see the comments in `.env.example` — generate the verify **and** API-key credentials from
   the *same* Veltrix login so fees land on one wallet)
-- `VERIFICATION_MODE`, `OTP_DELIVERY_MODE`, `NOTIFICATIONS_MODE` — **leave as `MOCK` until
-  Veltrix credentials are confirmed working**, then flip to `LIVE`. Going live for real
-  subscribers while these are still `MOCK` means BVN/NIN checks always "pass" and the OTP is
-  handed back in the HTTP response instead of being sent — do not skip this.
+- `VERIFICATION_MODE`, `NOTIFICATIONS_MODE` — **leave as `MOCK` until Veltrix credentials are
+  confirmed working**, then flip to `LIVE`. Going live for real subscribers while
+  `VERIFICATION_MODE` is still `MOCK` means BVN/NIN checks always "pass" — do not skip this.
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — used once by the seed step below
 
 ```bash
@@ -159,7 +158,7 @@ su - admintsl -c 'cd ~/ipo-portal && npm run build:css && ~/.local/bin/pm2 resta
 - **No `.htaccess` needed** for this deploy the way prodigy-bank needed one, precisely because
   the app isn't under `public_html` — nothing to lock down at the Apache level.
 - **Forms/notifications failing:** check `VELTRIX_*` env values and that `NOTIFICATIONS_MODE`/
-  `OTP_DELIVERY_MODE`/`VERIFICATION_MODE` are actually set to `LIVE`, not left on `MOCK`.
+  `VERIFICATION_MODE` are actually set to `LIVE`, not left on `MOCK`.
 - **`.env` drifts out of sync with `.env.example`:** the live `.env` was created once via
   `cp .env.example .env` at initial deploy and is never touched by `git pull` afterwards (it's
   gitignored, on purpose — it holds secrets). Any setting added to `.env.example` in a later

@@ -46,9 +46,8 @@ router.post("/offers/:offerId/start", (req, res) => {
   });
 
   req.session.subscriptionId = subscription.id;
-  req.session.securityVerifiedFor = null;
 
-  res.redirect(`/offers/${offer.id}/subscribe`);
+  res.redirect(`/offers/${offer.id}/subscribe/account`);
 });
 
 module.exports = router;

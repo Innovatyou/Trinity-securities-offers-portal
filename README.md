@@ -1,8 +1,7 @@
 # Trinity Securities Limited — Offers Portal
 
 A Node.js/Express public offers (share subscription) portal for Trinity Securities Limited,
-modelled on the same 3-step flow used by Meristem's Offers Portal: **Security → Account
-(BVN/NIN) → Participation (shares + payment)**.
+using a 2-step flow: **Account (contact info + BVN/NIN) → Participation (shares + payment)**.
 
 ## Stack
 
@@ -36,7 +35,6 @@ small file, so you can wire in real providers without touching the rest of the a
 | Piece | File | Current state |
 |---|---|---|
 | BVN / minor NIN verification | `src/services/verification.js` | **Mocked** — any well-formed 11-digit number verifies successfully. Swap in Youverify/Prembly/Smile Identity/VerifyMe/NIBSS once you have a KYC contract; nothing else needs to change. |
-| OTP for the Security step | `src/services/otp.js` | **Mocked** — a real code is generated but handed back in the response (`devCode`) instead of being texted/emailed. Wire up an SMS/email provider (Termii, Africa's Talking, etc.) and delete the `devCode` field. |
 | Payment | Bank transfer only | Subscribers transfer to the **static** account in `.env` (`BANK_NAME` / `BANK_ACCOUNT_NUMBER` / `BANK_ACCOUNT_NAME`) and quote a unique reference (`TSL-XXXXXXXX`) as narration; an admin manually confirms once the transfer lands and reconciles by reference + amount. A card/online-payment option (e.g. Paystack) or a real bank webhook can replace the manual "I've Made the Transfer" step later. |
 | "Pay with [trading platform]" login | Not included | The reference screenshots show a second option that submits a username/password for the broker's own trading platform. That pattern is worth avoiding even once InfoWARE/Trinity's platform is ready — see note below. |
 
@@ -68,12 +66,11 @@ src/
   db.js                All data access (SQLite via better-sqlite3)
   routes/
     public.js           Home + offer detail + "start subscription"
-    subscribe.js         The 3-step flow (Security / Account / Participation)
+    subscribe.js         The 2-step flow (Account / Participation)
     admin.js             Admin auth, offers CRUD, subscriptions review
     api.js               Inline BVN/NIN verify endpoints (fetch() calls from the Account step)
   services/
     verification.js      BVN/NIN verification (mocked, pluggable)
-    otp.js                OTP generation/verification (mocked, pluggable)
     reference.js          Generates the TSL-XXXXXXXX bank transfer reference
   middleware/            Admin auth guard + subscription-flow step guard
   views/                 EJS templates (Tailwind classes)

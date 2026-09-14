@@ -1,86 +1,8 @@
-// Shared client-side behaviour for the 3-step subscription flow.
+// Shared client-side behaviour for the 2-step subscription flow.
 // Every block below guards on the element existing, so this one file can be
-// safely included on the security / account / participation pages.
+// safely included on the account / participation pages.
 
 document.addEventListener("DOMContentLoaded", function () {
-  // ---------- Security step: send / verify OTP ----------
-  const sendOtpBtn = document.getElementById("send-otp-btn");
-  const otpSection = document.getElementById("otp-section");
-  const otpDevHint = document.getElementById("otp-dev-hint");
-  const destinationInput = document.getElementById("destination");
-  const verifyOtpBtn = document.getElementById("verify-otp-btn");
-  const otpInput = document.getElementById("otp-code");
-  const securityError = document.getElementById("security-error");
-
-  if (sendOtpBtn) {
-    sendOtpBtn.addEventListener("click", async function () {
-      const destination = destinationInput.value.trim();
-      if (!destination) {
-        destinationInput.focus();
-        return;
-      }
-      sendOtpBtn.disabled = true;
-      sendOtpBtn.textContent = "Sending...";
-      try {
-        const res = await fetch(`${window.SUBSCRIBE_BASE}/send-otp`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ destination }),
-        });
-        const data = await res.json();
-
-        if (!data.ok) {
-          securityError.textContent = data.message || "Could not send code.";
-          securityError.classList.remove("hidden");
-          return;
-        }
-        securityError.classList.add("hidden");
-        otpSection.classList.remove("hidden");
-        if (data.devCode && otpDevHint) {
-          otpDevHint.textContent = `Development mode - your code is ${data.devCode} (a real deployment would text/email this instead).`;
-          otpDevHint.classList.remove("hidden");
-        }
-      } catch (err) {
-        securityError.textContent = "Network error - please check your connection and try again.";
-        securityError.classList.remove("hidden");
-      } finally {
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = "Resend code";
-      }
-    });
-  }
-
-  if (verifyOtpBtn) {
-    verifyOtpBtn.addEventListener("click", async function () {
-      const code = otpInput.value.trim();
-      if (!code) {
-        otpInput.focus();
-        return;
-      }
-      verifyOtpBtn.disabled = true;
-      try {
-        const res = await fetch(`${window.SUBSCRIBE_BASE}/verify-otp`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
-        });
-        const data = await res.json();
-
-        if (!data.ok) {
-          securityError.textContent = data.message || "Invalid code.";
-          securityError.classList.remove("hidden");
-          verifyOtpBtn.disabled = false;
-          return;
-        }
-        window.location.href = data.redirectTo;
-      } catch (err) {
-        securityError.textContent = "Network error - please check your connection and try again.";
-        securityError.classList.remove("hidden");
-        verifyOtpBtn.disabled = false;
-      }
-    });
-  }
-
   // ---------- Account step: subscriber type toggle ----------
   const forMeCard = document.getElementById("for-me-card");
   const forMinorCard = document.getElementById("for-minor-card");

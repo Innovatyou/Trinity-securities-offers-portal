@@ -1,7 +1,7 @@
 /**
  * Email transport switch
  * -----------------------------------------------------------------------
- * otp.js and admin.js call sendEmail() here once their own MOCK/LIVE flag
+ * admin.js calls sendEmail() here once its own MOCK/LIVE flag
  * has already decided to actually deliver - this only decides HOW.
  * SMS has no SMTP equivalent, so it always goes through veltrixClient.
  *
