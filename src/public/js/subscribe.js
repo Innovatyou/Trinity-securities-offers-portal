@@ -21,25 +21,31 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       sendOtpBtn.disabled = true;
       sendOtpBtn.textContent = "Sending...";
-      const res = await fetch(`${window.SUBSCRIBE_BASE}/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ destination }),
-      });
-      const data = await res.json();
-      sendOtpBtn.disabled = false;
-      sendOtpBtn.textContent = "Resend code";
+      try {
+        const res = await fetch(`${window.SUBSCRIBE_BASE}/send-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destination }),
+        });
+        const data = await res.json();
 
-      if (!data.ok) {
-        securityError.textContent = data.message || "Could not send code.";
+        if (!data.ok) {
+          securityError.textContent = data.message || "Could not send code.";
+          securityError.classList.remove("hidden");
+          return;
+        }
+        securityError.classList.add("hidden");
+        otpSection.classList.remove("hidden");
+        if (data.devCode && otpDevHint) {
+          otpDevHint.textContent = `Development mode - your code is ${data.devCode} (a real deployment would text/email this instead).`;
+          otpDevHint.classList.remove("hidden");
+        }
+      } catch (err) {
+        securityError.textContent = "Network error - please check your connection and try again.";
         securityError.classList.remove("hidden");
-        return;
-      }
-      securityError.classList.add("hidden");
-      otpSection.classList.remove("hidden");
-      if (data.devCode && otpDevHint) {
-        otpDevHint.textContent = `Development mode - your code is ${data.devCode} (a real deployment would text/email this instead).`;
-        otpDevHint.classList.remove("hidden");
+      } finally {
+        sendOtpBtn.disabled = false;
+        sendOtpBtn.textContent = "Resend code";
       }
     });
   }
@@ -52,20 +58,26 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
       verifyOtpBtn.disabled = true;
-      const res = await fetch(`${window.SUBSCRIBE_BASE}/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      verifyOtpBtn.disabled = false;
+      try {
+        const res = await fetch(`${window.SUBSCRIBE_BASE}/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
 
-      if (!data.ok) {
-        securityError.textContent = data.message || "Invalid code.";
+        if (!data.ok) {
+          securityError.textContent = data.message || "Invalid code.";
+          securityError.classList.remove("hidden");
+          verifyOtpBtn.disabled = false;
+          return;
+        }
+        window.location.href = data.redirectTo;
+      } catch (err) {
+        securityError.textContent = "Network error - please check your connection and try again.";
         securityError.classList.remove("hidden");
-        return;
+        verifyOtpBtn.disabled = false;
       }
-      window.location.href = data.redirectTo;
     });
   }
 
@@ -121,31 +133,39 @@ document.addEventListener("DOMContentLoaded", function () {
     bvnVerifyBtn.addEventListener("click", async function () {
       bvnVerifyBtn.disabled = true;
       bvnVerifyBtn.textContent = "Verifying...";
-      const res = await fetch("/api/verify-bvn", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bvn: bvnInput.value }),
-      });
-      const data = await res.json();
-      bvnVerifyBtn.textContent = "Verify";
+      try {
+        const res = await fetch("/api/verify-bvn", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bvn: bvnInput.value }),
+        });
+        const data = await res.json();
 
-      if (!data.verified) {
-        bvnErrorEl.textContent = data.message || "BVN could not be verified.";
+        if (!data.verified) {
+          bvnErrorEl.textContent = data.message || "BVN could not be verified.";
+          bvnErrorEl.classList.remove("hidden");
+          bvnVerified = false;
+          updateContinueState();
+          return;
+        }
+
+        bvnErrorEl.classList.add("hidden");
+        bvnVerified = true;
+        bvnVerifiedNameEl.textContent = data.fullName;
+        bvnInput.readOnly = true;
+        bvnInput.classList.add("bg-slate-50");
+        bvnVerifyBtn.classList.add("hidden");
+        bvnVerifiedPanel.classList.remove("hidden");
+        updateContinueState();
+      } catch (err) {
+        bvnErrorEl.textContent = "Network error - please check your connection and try again.";
         bvnErrorEl.classList.remove("hidden");
-        bvnVerifyBtn.disabled = false;
         bvnVerified = false;
         updateContinueState();
-        return;
+      } finally {
+        bvnVerifyBtn.textContent = "Verify";
+        bvnVerifyBtn.disabled = bvnVerified;
       }
-
-      bvnErrorEl.classList.add("hidden");
-      bvnVerified = true;
-      bvnVerifiedNameEl.textContent = data.fullName;
-      bvnInput.readOnly = true;
-      bvnInput.classList.add("bg-slate-50");
-      bvnVerifyBtn.classList.add("hidden");
-      bvnVerifiedPanel.classList.remove("hidden");
-      updateContinueState();
     });
   }
 
@@ -187,26 +207,34 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       ninVerifyBtn.disabled = true;
       ninVerifyBtn.textContent = "Verifying...";
-      const res = await fetch("/api/verify-nin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nin: value }),
-      });
-      const data = await res.json();
-      ninVerifyBtn.disabled = false;
-      ninVerifyBtn.textContent = "Verify";
+      try {
+        const res = await fetch("/api/verify-nin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nin: value }),
+        });
+        const data = await res.json();
 
-      if (!data.verified) {
-        ninErrorEl.textContent = data.message || "NIN not found. Please check and try again.";
+        if (!data.verified) {
+          ninErrorEl.textContent = data.message || "NIN not found. Please check and try again.";
+          ninErrorEl.classList.remove("hidden");
+          ninVerifiedState = false;
+          updateContinueState();
+          return;
+        }
+        ninErrorEl.classList.add("hidden");
+        ninVerifiedState = true;
+        ninVerifiedPanel.classList.remove("hidden");
+        updateContinueState();
+      } catch (err) {
+        ninErrorEl.textContent = "Network error - please check your connection and try again.";
         ninErrorEl.classList.remove("hidden");
         ninVerifiedState = false;
         updateContinueState();
-        return;
+      } finally {
+        ninVerifyBtn.disabled = false;
+        ninVerifyBtn.textContent = "Verify";
       }
-      ninErrorEl.classList.add("hidden");
-      ninVerifiedState = true;
-      ninVerifiedPanel.classList.remove("hidden");
-      updateContinueState();
     });
   }
 
