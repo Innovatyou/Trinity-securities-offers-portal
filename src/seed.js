@@ -11,6 +11,7 @@ async function main() {
     db.createAdminUser({
       name: "Trinity Securities Admin",
       email: adminEmail,
+      role: "SUPER_ADMIN",
       passwordHash: await bcrypt.hash(adminPassword, 10),
     });
     console.log(`Created admin user: ${adminEmail} / ${adminPassword} (change this password after first login)`);

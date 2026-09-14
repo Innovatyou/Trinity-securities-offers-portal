@@ -10,7 +10,9 @@
 
 <div class="flex items-center justify-between mb-4">
   <h2 class="font-bold text-navy-800">Offers</h2>
+  <% if (can('manage_offers')) { %>
   <a href="/admin/offers/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Offer</a>
+  <% } %>
 </div>
 
 <div class="bg-white rounded-xl border border-navy-100 overflow-hidden">
@@ -40,17 +42,19 @@
             </span>
           </td>
           <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-            <a href="/admin/offers/<%= offer.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
-            <% if (offer.status !== 'OPEN') { %>
-              <form action="/admin/offers/<%= offer.id %>/status" method="POST" class="inline">
-                <input type="hidden" name="status" value="OPEN" />
-                <button class="font-semibold text-emerald-600 hover:underline">Open</button>
-              </form>
-            <% } else { %>
-              <form action="/admin/offers/<%= offer.id %>/status" method="POST" class="inline">
-                <input type="hidden" name="status" value="CLOSED" />
-                <button class="font-semibold text-red-600 hover:underline">Close</button>
-              </form>
+            <% if (can('manage_offers')) { %>
+              <a href="/admin/offers/<%= offer.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+              <% if (offer.status !== 'OPEN') { %>
+                <form action="/admin/offers/<%= offer.id %>/status" method="POST" class="inline">
+                  <input type="hidden" name="status" value="OPEN" />
+                  <button class="font-semibold text-emerald-600 hover:underline">Open</button>
+                </form>
+              <% } else { %>
+                <form action="/admin/offers/<%= offer.id %>/status" method="POST" class="inline">
+                  <input type="hidden" name="status" value="CLOSED" />
+                  <button class="font-semibold text-red-600 hover:underline">Close</button>
+                </form>
+              <% } %>
             <% } %>
           </td>
         </tr>

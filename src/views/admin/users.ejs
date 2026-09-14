@@ -1,0 +1,43 @@
+<div class="flex items-center justify-between mb-4">
+  <h2 class="font-bold text-navy-800">Admin Users</h2>
+  <a href="/admin/users/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Admin</a>
+</div>
+
+<div class="bg-white rounded-xl border border-navy-100 overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Name</th>
+        <th class="px-4 py-3 font-semibold">Email</th>
+        <th class="px-4 py-3 font-semibold">Role</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% adminUsers.forEach(function(u) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-semibold text-navy-800">
+            <%= u.name %>
+            <% if (u.id === currentAdmin.id) { %><span class="text-xs font-normal text-navy-400">(you)</span><% } %>
+          </td>
+          <td class="px-4 py-3 text-navy-600"><%= u.email %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-navy-50 text-navy-600"><%= roleLabel(u.role) %></span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full <%= u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
+              <%= u.status === 'ACTIVE' ? 'Active' : 'Disabled' %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+            <a href="/admin/users/<%= u.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+            <form action="/admin/users/<%= u.id %>/reset-password" method="POST" class="inline">
+              <button class="font-semibold text-navy-600 hover:underline">Reset password</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

@@ -1,7 +1,9 @@
+const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const db = require("../db");
-const { requireAdmin } = require("../middleware/adminAuth");
+const { requireAdmin, requirePermission } = require("../middleware/adminAuth");
+const { roleOptions } = require("../services/permissions");
 const veltrix = require("../services/veltrixClient");
 
 const router = express.Router();
@@ -17,13 +19,14 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   const admin = db.findAdminByEmail((email || "").trim().toLowerCase());
 
-  if (!admin || !(await bcrypt.compare(password || "", admin.passwordHash))) {
+  if (!admin || admin.status !== "ACTIVE" || !(await bcrypt.compare(password || "", admin.passwordHash))) {
     req.flash("error", "Invalid email or password.");
     return res.redirect("/admin/login");
   }
 
   req.session.adminId = admin.id;
   req.session.adminName = admin.name;
+  req.session.adminRole = admin.role;
   res.redirect("/admin");
 });
 
@@ -48,17 +51,17 @@ router.get("/", requireAdmin, (req, res) => {
 
 // ---------- Offers CRUD ----------
 
-router.get("/offers/new", requireAdmin, (req, res) => {
+router.get("/offers/new", requireAdmin, requirePermission("manage_offers"), (req, res) => {
   res.render("admin/offer-form", { title: "New Offer", layout: "admin-layout", offer: null });
 });
 
-router.post("/offers", requireAdmin, (req, res) => {
+router.post("/offers", requireAdmin, requirePermission("manage_offers"), (req, res) => {
   db.createOffer(offerDataFromBody(req.body));
   req.flash("success", "Offer created.");
   res.redirect("/admin");
 });
 
-router.get("/offers/:id/edit", requireAdmin, (req, res) => {
+router.get("/offers/:id/edit", requireAdmin, requirePermission("manage_offers"), (req, res) => {
   const offer = db.getOfferById(req.params.id);
   if (!offer) {
     req.flash("error", "Offer not found.");
@@ -67,13 +70,13 @@ router.get("/offers/:id/edit", requireAdmin, (req, res) => {
   res.render("admin/offer-form", { title: "Edit Offer", layout: "admin-layout", offer });
 });
 
-router.post("/offers/:id", requireAdmin, (req, res) => {
+router.post("/offers/:id", requireAdmin, requirePermission("manage_offers"), (req, res) => {
   db.updateOffer(req.params.id, offerDataFromBody(req.body));
   req.flash("success", "Offer updated.");
   res.redirect("/admin");
 });
 
-router.post("/offers/:id/status", requireAdmin, (req, res) => {
+router.post("/offers/:id/status", requireAdmin, requirePermission("manage_offers"), (req, res) => {
   db.updateOfferStatus(req.params.id, req.body.status);
   req.flash("success", "Offer status updated.");
   res.redirect("/admin");
@@ -99,7 +102,7 @@ function offerDataFromBody(body) {
 
 // ---------- Subscriptions ----------
 
-router.get("/subscriptions", requireAdmin, (req, res) => {
+router.get("/subscriptions", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
   const statusFilter = req.query.status;
   const subscriptions = db.listSubscriptions({ status: statusFilter || undefined });
   res.render("admin/subscriptions", {
@@ -110,7 +113,7 @@ router.get("/subscriptions", requireAdmin, (req, res) => {
   });
 });
 
-router.post("/subscriptions/:id/confirm", requireAdmin, async (req, res) => {
+router.post("/subscriptions/:id/confirm", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
   const subscription = db.updateSubscription(req.params.id, {
     status: "CONFIRMED",
     confirmedAt: new Date(),
@@ -124,7 +127,7 @@ router.post("/subscriptions/:id/confirm", requireAdmin, async (req, res) => {
   res.redirect("/admin/subscriptions");
 });
 
-router.post("/subscriptions/:id/reject", requireAdmin, async (req, res) => {
+router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
   const subscription = db.updateSubscription(req.params.id, { status: "REJECTED" });
   await notifySubscriber(subscription, {
     subject: "Your subscription could not be confirmed",
@@ -132,6 +135,116 @@ router.post("/subscriptions/:id/reject", requireAdmin, async (req, res) => {
   });
   req.flash("success", "Subscription rejected.");
   res.redirect("/admin/subscriptions");
+});
+
+function generateTempPassword() {
+  return crypto.randomBytes(18).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+}
+
+// ---------- Admin users (roles & permissions) ----------
+
+router.get("/users", requireAdmin, requirePermission("manage_admins"), (req, res) => {
+  res.render("admin/users", {
+    title: "Admin Users",
+    layout: "admin-layout",
+    adminUsers: db.listAdminUsers(),
+  });
+});
+
+router.get("/users/new", requireAdmin, requirePermission("manage_admins"), (req, res) => {
+  res.render("admin/user-form", {
+    title: "New Admin",
+    layout: "admin-layout",
+    adminUser: null,
+    roles: roleOptions(),
+  });
+});
+
+router.post("/users", requireAdmin, requirePermission("manage_admins"), async (req, res) => {
+  const name = (req.body.name || "").trim();
+  const email = (req.body.email || "").trim().toLowerCase();
+  const role = req.body.role;
+
+  if (!name || !email || !roleOptions().some((r) => r.value === role)) {
+    req.flash("error", "Please fill in all fields with a valid role.");
+    return res.redirect("/admin/users/new");
+  }
+  if (db.findAdminByEmail(email)) {
+    req.flash("error", "An admin with that email already exists.");
+    return res.redirect("/admin/users/new");
+  }
+
+  const tempPassword = generateTempPassword();
+  db.createAdminUser({ name, email, role, passwordHash: await bcrypt.hash(tempPassword, 10) });
+
+  req.flash(
+    "success",
+    `Admin created: ${email} / ${tempPassword} - share this securely, it will not be shown again.`
+  );
+  res.redirect("/admin/users");
+});
+
+router.get("/users/:id/edit", requireAdmin, requirePermission("manage_admins"), (req, res) => {
+  const adminUser = db.getAdminById(req.params.id);
+  if (!adminUser) {
+    req.flash("error", "Admin user not found.");
+    return res.redirect("/admin/users");
+  }
+  res.render("admin/user-form", {
+    title: "Edit Admin",
+    layout: "admin-layout",
+    adminUser,
+    roles: roleOptions(),
+  });
+});
+
+router.post("/users/:id", requireAdmin, requirePermission("manage_admins"), (req, res) => {
+  const target = db.getAdminById(req.params.id);
+  if (!target) {
+    req.flash("error", "Admin user not found.");
+    return res.redirect("/admin/users");
+  }
+
+  const role = req.body.role;
+  const status = req.body.status === "DISABLED" ? "DISABLED" : "ACTIVE";
+  const name = (req.body.name || target.name).trim();
+
+  if (target.id === req.session.adminId && (role !== target.role || status !== target.status)) {
+    req.flash("error", "You cannot change your own role or status.");
+    return res.redirect("/admin/users");
+  }
+
+  const wouldRemoveLastSuperAdmin =
+    target.role === "SUPER_ADMIN" &&
+    target.status === "ACTIVE" &&
+    (role !== "SUPER_ADMIN" || status !== "ACTIVE") &&
+    db.countActiveAdminsByRole("SUPER_ADMIN") <= 1;
+
+  if (wouldRemoveLastSuperAdmin) {
+    req.flash("error", "At least one active Super Admin is required.");
+    return res.redirect("/admin/users");
+  }
+
+  db.updateAdminUser(target.id, { name, role, status });
+  req.flash("success", "Admin user updated.");
+  res.redirect("/admin/users");
+});
+
+router.post("/users/:id/reset-password", requireAdmin, requirePermission("manage_admins"), async (req, res) => {
+  const target = db.getAdminById(req.params.id);
+  if (!target) {
+    req.flash("error", "Admin user not found.");
+    return res.redirect("/admin/users");
+  }
+
+  const tempPassword = generateTempPassword();
+  db.updateAdminPassword(target.id, await bcrypt.hash(tempPassword, 10));
+
+  req.flash(
+    "success",
+    `Password reset for ${target.email}: ${tempPassword} - share this securely, it will not be shown again.`
+  );
+  res.redirect("/admin/users");
 });
 
 // ---------- Subscriber notifications ----------

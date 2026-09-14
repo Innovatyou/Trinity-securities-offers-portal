@@ -27,6 +27,8 @@ db.exec(`
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'SUPER_ADMIN',
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
     created_at TEXT NOT NULL
   );
 
@@ -90,6 +92,16 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 `);
+
+// Migrate admin_users for databases created before role/status existed
+// (CREATE TABLE IF NOT EXISTS above only helps brand-new databases).
+const adminUserColumns = db.prepare(`PRAGMA table_info(admin_users)`).all().map((c) => c.name);
+if (!adminUserColumns.includes("role")) {
+  db.exec(`ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'SUPER_ADMIN'`);
+}
+if (!adminUserColumns.includes("status")) {
+  db.exec(`ALTER TABLE admin_users ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'`);
+}
 
 function genId() {
   return crypto.randomUUID();
@@ -383,22 +395,54 @@ function countSubscriptionsByStatus() {
 // Admin users
 // ---------------------------------------------------------------------
 
-function findAdminByEmail(email) {
-  const row = db.prepare(`SELECT * FROM admin_users WHERE email = ?`).get(email);
+function rowToAdmin(row) {
   if (!row) return null;
-  return { id: row.id, name: row.name, email: row.email, passwordHash: row.password_hash };
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    passwordHash: row.password_hash,
+    role: row.role,
+    status: row.status,
+    createdAt: new Date(row.created_at),
+  };
 }
 
-function createAdminUser({ name, email, passwordHash }) {
+function findAdminByEmail(email) {
+  return rowToAdmin(db.prepare(`SELECT * FROM admin_users WHERE email = ?`).get(email));
+}
+
+function getAdminById(id) {
+  return rowToAdmin(db.prepare(`SELECT * FROM admin_users WHERE id = ?`).get(id));
+}
+
+function listAdminUsers() {
+  return db.prepare(`SELECT * FROM admin_users ORDER BY created_at ASC`).all().map(rowToAdmin);
+}
+
+function countActiveAdminsByRole(role) {
+  return db
+    .prepare(`SELECT COUNT(*) as count FROM admin_users WHERE role = ? AND status = 'ACTIVE'`)
+    .get(role).count;
+}
+
+function createAdminUser({ name, email, passwordHash, role }) {
   const id = genId();
-  db.prepare(`INSERT INTO admin_users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`).run(
-    id,
-    name,
-    email,
-    passwordHash,
-    now()
-  );
-  return { id, name, email };
+  db.prepare(
+    `INSERT INTO admin_users (id, name, email, password_hash, role, status, created_at)
+     VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?)`
+  ).run(id, name, email, passwordHash, role || "SUPER_ADMIN", now());
+  return getAdminById(id);
+}
+
+function updateAdminUser(id, { name, role, status }) {
+  db.prepare(`UPDATE admin_users SET name = ?, role = ?, status = ? WHERE id = ?`).run(name, role, status, id);
+  return getAdminById(id);
+}
+
+function updateAdminPassword(id, passwordHash) {
+  db.prepare(`UPDATE admin_users SET password_hash = ? WHERE id = ?`).run(passwordHash, id);
+  return getAdminById(id);
 }
 
 module.exports = {
@@ -419,5 +463,10 @@ module.exports = {
   listSubscriptions,
   countSubscriptionsByStatus,
   findAdminByEmail,
+  getAdminById,
+  listAdminUsers,
+  countActiveAdminsByRole,
   createAdminUser,
+  updateAdminUser,
+  updateAdminPassword,
 };
