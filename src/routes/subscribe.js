@@ -55,7 +55,12 @@ router.post("/send-otp", loadSubscription(0, STATUS_ORDER), async (req, res) => 
     res.json({ ok: true, destination, devCode });
   } catch (err) {
     console.error("OTP dispatch failed:", err.message);
-    res.json({ ok: false, message: "Could not send the verification code. Please try again." });
+    // Nudge toward the other channel right when the one they tried has
+    // failed - both are equally valid, so this is often the fastest fix.
+    const message = EMAIL_RE.test(destination)
+      ? "Could not send the verification code to that email. Please try again, or use your phone number instead."
+      : "Could not send the verification code to that phone number. Please try again, or use your email address instead.";
+    res.json({ ok: false, message });
   }
 });
 
