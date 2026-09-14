@@ -155,6 +155,56 @@ router.post("/offers/:id/status", requireAdmin, requirePermission("manage_offers
   res.redirect("/admin");
 });
 
+router.post("/offers/:id/delete", requireAdmin, requirePermission("manage_offers"), (req, res) => {
+  const offer = db.getOfferById(req.params.id);
+  if (!offer) {
+    req.flash("error", "Offer not found.");
+    return res.redirect("/admin");
+  }
+  try {
+    db.deleteOffer(offer.id);
+    req.flash("success", `"${offer.name}" deleted.`);
+  } catch (err) {
+    req.flash("error", err.message);
+  }
+  res.redirect("/admin");
+});
+
+router.get("/offers/export.csv", requireAdmin, requirePermission("manage_offers"), (req, res) => {
+  const offers = db.listOffers();
+  const columns = [
+    "name",
+    "issuer",
+    "status",
+    "currency",
+    "pricePerShare",
+    "minimumShares",
+    "multipleOf",
+    "maximumShares",
+    "referralRequired",
+    "opensAt",
+    "closesAt",
+    "createdAt",
+  ];
+  const csvEscape = (value) => `"${String(value === null || value === undefined ? "" : value).replace(/"/g, '""')}"`;
+  const rows = offers.map((offer) =>
+    columns
+      .map((col) => {
+        const value = offer[col];
+        if (value instanceof Date) return csvEscape(value.toISOString());
+        return csvEscape(value);
+      })
+      .join(",")
+  );
+  const csv = [columns.map(csvEscape).join(","), ...rows].join("\r\n");
+
+  res.set({
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="offers-${new Date().toISOString().slice(0, 10)}.csv"`,
+  });
+  res.send(csv);
+});
+
 function offerDataFromBody(body) {
   return {
     name: body.name,

@@ -11,7 +11,10 @@
 <div class="flex items-center justify-between mb-4">
   <h2 class="font-bold text-navy-800">Offers</h2>
   <% if (can('manage_offers')) { %>
-  <a href="/admin/offers/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Offer</a>
+  <div class="flex items-center gap-2">
+    <a href="/admin/offers/export.csv" class="text-sm font-semibold border border-navy-200 text-navy-700 px-4 py-2 rounded-lg hover:bg-navy-50">Export CSV</a>
+    <a href="/admin/offers/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Offer</a>
+  </div>
   <% } %>
 </div>
 
@@ -55,6 +58,10 @@
                   <button class="font-semibold text-red-600 hover:underline">Close</button>
                 </form>
               <% } %>
+              <form action="/admin/offers/<%= offer.id %>/delete" method="POST" class="inline"
+                onsubmit="return confirm('Delete this offer? This cannot be undone. Offers with existing subscriptions cannot be deleted.');">
+                <button class="font-semibold text-red-600 hover:underline">Delete</button>
+              </form>
             <% } %>
           </td>
         </tr>

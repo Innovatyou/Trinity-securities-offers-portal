@@ -291,6 +291,20 @@ function updateOfferStatus(id, status) {
   return getOfferById(id);
 }
 
+function countSubscriptionsForOffer(id) {
+  return db.prepare(`SELECT COUNT(*) AS n FROM subscriptions WHERE offer_id = ?`).get(id).n;
+}
+
+// Refuses to delete an offer that already has subscriptions against it -
+// those are real subscriber/financial records, not something a stray click
+// should be able to orphan. Use status CLOSED to retire an offer instead.
+function deleteOffer(id) {
+  if (countSubscriptionsForOffer(id) > 0) {
+    throw new Error("This offer has subscriptions against it and cannot be deleted. Close it instead.");
+  }
+  db.prepare(`DELETE FROM offers WHERE id = ?`).run(id);
+}
+
 // ---------------------------------------------------------------------
 // Subscribers / Minor beneficiaries
 // ---------------------------------------------------------------------
@@ -473,6 +487,8 @@ module.exports = {
   createOffer,
   updateOffer,
   updateOfferStatus,
+  countSubscriptionsForOffer,
+  deleteOffer,
   getSubscriberById,
   getSubscriberByBvn,
   upsertSubscriberByBvn,
