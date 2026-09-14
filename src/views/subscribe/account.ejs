@@ -1,6 +1,15 @@
 <h2 class="text-xl font-bold text-navy-800 mb-1">Account Verification</h2>
 <p class="text-sm text-navy-400 mb-6">Enter and verify your BVN to confirm your Trinity Securities account.</p>
 
+<div class="rounded-xl bg-gold-50 border border-gold-100 p-4 mb-6 flex items-start gap-3">
+  <span class="text-xl leading-none">&#8505;&#65039;</span>
+  <p class="text-sm text-navy-600">
+    Don't have a Trinity Securities account yet?
+    <a href="https://www.tradewithtrinity.com/IW/NewAccount" target="_blank" rel="noopener" class="font-semibold text-navy-800 underline hover:text-navy-900">Open one online</a>
+    first &mdash; your BVN below is verified against an existing Trinity Securities account.
+  </p>
+</div>
+
 <form action="/offers/<%= offer.id %>/subscribe/account" method="POST">
   <input type="hidden" name="subscriptionFor" id="subscriptionFor" value="me" />
 
