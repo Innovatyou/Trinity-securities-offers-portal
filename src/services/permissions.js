@@ -18,6 +18,10 @@ const ROLES = {
     label: "Subscriptions Reviewer",
     permissions: ["manage_subscriptions"],
   },
+  FINANCE: {
+    label: "Finance",
+    permissions: ["manage_subscriptions"],
+  },
 };
 
 function hasPermission(role, permission) {
