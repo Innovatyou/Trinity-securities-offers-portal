@@ -9,6 +9,16 @@ const veltrix = require("../services/veltrixClient");
 
 const router = express.Router();
 
+// Every /admin/* response carries session-scoped or otherwise sensitive
+// content, so it must never be cached by an intermediary proxy (this box's
+// cPanel/nginx reverse-proxy cache in particular, which by default caches
+// 200/301/302 responses for an hour with no notion of our session cookie).
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  next();
+});
+
 // ---------- Auth ----------
 
 router.get("/login", (req, res) => {
