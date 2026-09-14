@@ -5,6 +5,19 @@ const { loadSubscription } = require("../middleware/subscriptionFlow");
 
 const router = express.Router({ mergeParams: true });
 
+// Every response here carries session-scoped subscription state (BVN name,
+// bank transfer reference, share amounts...), so it must never be cached by
+// an intermediary proxy (this box's cPanel/nginx reverse-proxy cache in
+// particular, which by default caches 200/301/302 responses for an hour
+// with no notion of our session cookie - meaning a cached page here could
+// get served to an entirely different subscriber). See admin.js for the
+// same fix applied there first.
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  next();
+});
+
 const STATUS_ORDER = [
   "STARTED",
   "ACCOUNT_VERIFIED",
