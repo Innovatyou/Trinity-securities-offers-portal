@@ -27,10 +27,19 @@
         <a href="/" class="block px-3 py-2 rounded-lg hover:bg-navy-700">View Public Portal</a>
       </nav>
       <% if (typeof currentAdmin !== 'undefined' && currentAdmin) { %>
-      <div class="px-5 py-3 border-t border-navy-700 text-xs text-navy-300">
-        Signed in as <span class="text-white font-semibold"><%= currentAdmin.name %></span>
-        <div class="text-gold-400"><%= roleLabel(currentAdmin.role) %></div>
-      </div>
+      <a href="/admin/profile" class="flex items-center gap-3 px-5 py-3 border-t border-navy-700 text-xs text-navy-300 hover:bg-navy-700">
+        <% if (currentAdmin.avatarUrl) { %>
+          <img src="<%= currentAdmin.avatarUrl %>" alt="" class="h-9 w-9 rounded-full object-cover shrink-0" />
+        <% } else { %>
+          <div class="h-9 w-9 rounded-full bg-navy-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+            <%= currentAdmin.name.trim().charAt(0).toUpperCase() %>
+          </div>
+        <% } %>
+        <div class="min-w-0">
+          <div class="text-white font-semibold truncate"><%= currentAdmin.name %></div>
+          <div class="text-gold-400"><%= roleLabel(currentAdmin.role) %></div>
+        </div>
+      </a>
       <% } %>
       <form action="/admin/logout" method="POST" class="p-3 pt-0">
         <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-navy-700 text-sm">Sign out</button>

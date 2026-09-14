@@ -102,6 +102,9 @@ if (!adminUserColumns.includes("role")) {
 if (!adminUserColumns.includes("status")) {
   db.exec(`ALTER TABLE admin_users ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'`);
 }
+if (!adminUserColumns.includes("avatar_url")) {
+  db.exec(`ALTER TABLE admin_users ADD COLUMN avatar_url TEXT`);
+}
 
 function genId() {
   return crypto.randomUUID();
@@ -404,6 +407,7 @@ function rowToAdmin(row) {
     passwordHash: row.password_hash,
     role: row.role,
     status: row.status,
+    avatarUrl: row.avatar_url,
     createdAt: new Date(row.created_at),
   };
 }
@@ -445,8 +449,14 @@ function updateAdminPassword(id, passwordHash) {
   return getAdminById(id);
 }
 
-function updateAdminProfile(id, { name, email }) {
-  db.prepare(`UPDATE admin_users SET name = ?, email = ? WHERE id = ?`).run(name, email, id);
+function updateAdminProfile(id, { name, email, avatarUrl }) {
+  const current = getAdminById(id);
+  db.prepare(`UPDATE admin_users SET name = ?, email = ?, avatar_url = ? WHERE id = ?`).run(
+    name !== undefined ? name : current.name,
+    email !== undefined ? email : current.email,
+    avatarUrl !== undefined ? avatarUrl : current.avatarUrl,
+    id
+  );
   return getAdminById(id);
 }
 

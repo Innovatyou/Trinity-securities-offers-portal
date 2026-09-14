@@ -3,6 +3,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const db = require("../db");
 const { requireAdmin, requirePermission } = require("../middleware/adminAuth");
+const { handleAvatarUpload, deleteAvatarFile } = require("../middleware/upload");
 const { roleOptions } = require("../services/permissions");
 const veltrix = require("../services/veltrixClient");
 
@@ -41,7 +42,7 @@ router.get("/profile", requireAdmin, (req, res) => {
   res.render("admin/profile", { title: "My Profile", layout: "admin-layout" });
 });
 
-router.post("/profile", requireAdmin, async (req, res) => {
+router.post("/profile", requireAdmin, handleAvatarUpload, async (req, res) => {
   const name = (req.body.name || "").trim();
   const email = (req.body.email || "").trim().toLowerCase();
   const admin = db.getAdminById(req.session.adminId);
@@ -52,17 +53,22 @@ router.post("/profile", requireAdmin, async (req, res) => {
   }
   if (!(await bcrypt.compare(req.body.currentPassword || "", admin.passwordHash))) {
     req.flash("error", "Current password is incorrect.");
+    if (req.file) deleteAvatarFile(`/uploads/avatars/${req.file.filename}`);
     return res.redirect("/admin/profile");
   }
   if (email !== admin.email) {
     const existing = db.findAdminByEmail(email);
     if (existing && existing.id !== admin.id) {
       req.flash("error", "That email is already in use by another admin.");
+      if (req.file) deleteAvatarFile(`/uploads/avatars/${req.file.filename}`);
       return res.redirect("/admin/profile");
     }
   }
 
-  db.updateAdminProfile(admin.id, { name, email });
+  const avatarUrl = req.file ? `/uploads/avatars/${req.file.filename}` : undefined;
+  if (avatarUrl) deleteAvatarFile(admin.avatarUrl);
+
+  db.updateAdminProfile(admin.id, { name, email, avatarUrl });
   req.session.adminName = name;
   req.flash("success", "Profile updated.");
   res.redirect("/admin/profile");
