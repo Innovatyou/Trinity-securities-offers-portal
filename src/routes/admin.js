@@ -8,6 +8,9 @@ const { roleOptions } = require("../services/permissions");
 const veltrix = require("../services/veltrixClient");
 const mailer = require("../services/mailer");
 const receipt = require("../services/receipt");
+const { generateSubscriptionReference } = require("../services/reference");
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const router = express.Router();
 
@@ -236,6 +239,89 @@ router.get("/subscriptions", requireAdmin, requirePermission("manage_subscriptio
   });
 });
 
+router.get("/subscriptions/new", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+  res.render("admin/subscription-form", {
+    title: "New Subscription",
+    layout: "admin-layout",
+    offers: db.listOffers(),
+  });
+});
+
+router.post("/subscriptions", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+  const offer = db.getOfferById(req.body.offerId);
+  if (!offer) {
+    req.flash("error", "Select a valid offer.");
+    return res.redirect("/admin/subscriptions/new");
+  }
+
+  const fullName = (req.body.fullName || "").trim();
+  const bvn = (req.body.bvn || "").trim();
+  const contactDestination = (req.body.contactDestination || "").trim();
+  const isForMinor = req.body.subscriptionFor === "minor";
+  const shares = parseInt(req.body.numberOfShares, 10);
+
+  if (!fullName || !/^\d{11}$/.test(bvn)) {
+    req.flash("error", "Enter the investor's full name and an 11-digit BVN.");
+    return res.redirect("/admin/subscriptions/new");
+  }
+  if (!contactDestination) {
+    req.flash("error", "Enter the investor's email or phone number.");
+    return res.redirect("/admin/subscriptions/new");
+  }
+  if (
+    !Number.isInteger(shares) ||
+    shares < offer.minimumShares ||
+    shares % offer.multipleOf !== 0 ||
+    (offer.maximumShares && shares > offer.maximumShares)
+  ) {
+    req.flash(
+      "error",
+      `Enter a valid number of shares (minimum ${offer.minimumShares}, in multiples of ${offer.multipleOf}).`
+    );
+    return res.redirect("/admin/subscriptions/new");
+  }
+
+  let minorId = null;
+  if (isForMinor) {
+    const minorName = (req.body.minorFullName || "").trim();
+    const minorNin = (req.body.minorNin || "").trim();
+    if (!minorName || !/^\d{11}$/.test(minorNin)) {
+      req.flash("error", "Enter the minor's full name and an 11-digit NIN.");
+      return res.redirect("/admin/subscriptions/new");
+    }
+    minorId = db.createMinor({ nin: minorNin, fullName: minorName }).id;
+  }
+
+  const subscriber = db.upsertSubscriberByBvn({
+    bvn,
+    fullName,
+    email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
+    phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
+  });
+
+  const alreadyConfirmed = req.body.status === "CONFIRMED";
+  const subscription = db.createSubscription({
+    offerId: offer.id,
+    reference: generateSubscriptionReference(),
+    referralCode: (req.body.referralCode || "").trim() || null,
+  });
+  db.updateSubscription(subscription.id, {
+    subscriberId: subscriber.id,
+    isForMinor,
+    minorId,
+    numberOfShares: shares,
+    amount: shares * offer.pricePerShare,
+    paymentMethod: "BANK_TRANSFER",
+    status: alreadyConfirmed ? "CONFIRMED" : "PAYMENT_REPORTED",
+    consentAcceptedAt: new Date(),
+    transferReportedAt: new Date(),
+    ...(alreadyConfirmed ? { confirmedAt: new Date(), confirmedBy: req.session.adminName } : {}),
+  });
+
+  req.flash("success", `Subscription ${subscription.reference} created for ${fullName}.`);
+  res.redirect("/admin/subscriptions");
+});
+
 router.post("/subscriptions/:id/confirm", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
   const subscription = db.updateSubscription(req.params.id, {
     status: "CONFIRMED",
@@ -257,6 +343,28 @@ router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("manage
     message: `Your subscription (ref. ${subscription.reference}) for ${subscription.offer.name} could not be confirmed. Please contact Trinity Securities Limited for details.`,
   });
   req.flash("success", "Subscription rejected.");
+  res.redirect("/admin/subscriptions");
+});
+
+router.post("/subscriptions/:id/delete", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+  const subscription = db.getSubscriptionById(req.params.id);
+  if (!subscription) {
+    req.flash("error", "Subscription not found.");
+    return res.redirect("/admin/subscriptions");
+  }
+  db.deleteSubscription(subscription.id);
+  req.flash("success", `Subscription ${subscription.reference} deleted.`);
+  res.redirect("/admin/subscriptions");
+});
+
+router.post("/subscriptions/batch-delete", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+  const ids = [].concat(req.body.ids || []).filter(Boolean);
+  if (!ids.length) {
+    req.flash("error", "Select at least one subscription to delete.");
+    return res.redirect("/admin/subscriptions");
+  }
+  const count = db.deleteSubscriptions(ids);
+  req.flash("success", `${count} subscription${count === 1 ? "" : "s"} deleted.`);
   res.redirect("/admin/subscriptions");
 });
 

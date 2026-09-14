@@ -414,6 +414,23 @@ function countSubscriptionsByStatus() {
   return Object.fromEntries(rows.map((r) => [r.status, r.count]));
 }
 
+function deleteSubscription(id) {
+  db.prepare(`DELETE FROM subscriptions WHERE id = ?`).run(id);
+}
+
+const deleteSubscriptionsTx = db.transaction((ids) => {
+  const stmt = db.prepare(`DELETE FROM subscriptions WHERE id = ?`);
+  let count = 0;
+  for (const id of ids) {
+    count += stmt.run(id).changes;
+  }
+  return count;
+});
+
+function deleteSubscriptions(ids) {
+  return deleteSubscriptionsTx(ids);
+}
+
 // ---------------------------------------------------------------------
 // Admin users
 // ---------------------------------------------------------------------
@@ -499,6 +516,8 @@ module.exports = {
   updateSubscription,
   listSubscriptions,
   countSubscriptionsByStatus,
+  deleteSubscription,
+  deleteSubscriptions,
   findAdminByEmail,
   getAdminById,
   listAdminUsers,
