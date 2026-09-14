@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const { loadSubscription } = require("../middleware/subscriptionFlow");
+const { notifySubscriber, notifyStaff } = require("../services/notifications");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -142,7 +143,7 @@ router.get(
 router.post(
   "/participation",
   loadSubscription(STATUS_ORDER.indexOf("ACCOUNT_VERIFIED"), STATUS_ORDER),
-  (req, res) => {
+  async (req, res) => {
     const { subscription } = req;
     const offer = subscription.offer;
     const shares = parseInt(req.body.numberOfShares, 10);
@@ -167,13 +168,23 @@ router.post(
     }
 
     const amount = shares * offer.pricePerShare;
+    const bank = bankDetails();
 
-    db.updateSubscription(subscription.id, {
+    const updated = db.updateSubscription(subscription.id, {
       numberOfShares: shares,
       amount,
       paymentMethod: "BANK_TRANSFER",
       status: "AWAITING_PAYMENT",
       consentAcceptedAt: new Date(),
+    });
+
+    await notifySubscriber(updated, {
+      subject: "Complete your Trinity Securities subscription - payment details",
+      message:
+        `Your subscription (ref. ${updated.reference}) for ${shares.toLocaleString()} shares in ${offer.name} ` +
+        `is ready for payment. Amount: ${offer.currency}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Transfer to ${bank.bankName}, account ${bank.accountNumber} (${bank.accountName}), and use ${updated.reference} ` +
+        `as your transfer narration.`,
     });
 
     res.redirect(`/offers/${req.params.offerId}/subscribe/participation`);
@@ -183,11 +194,30 @@ router.post(
 router.post(
   "/participation/report-payment",
   loadSubscription(STATUS_ORDER.indexOf("AWAITING_PAYMENT"), STATUS_ORDER),
-  (req, res) => {
-    db.updateSubscription(req.subscription.id, {
+  async (req, res) => {
+    const { subscription } = req;
+    const updated = db.updateSubscription(subscription.id, {
       status: "PAYMENT_REPORTED",
       transferReportedAt: new Date(),
     });
+
+    await notifySubscriber(updated, {
+      subject: "We've received your payment report",
+      message:
+        `We've received your payment report for subscription (ref. ${updated.reference}) in ${subscription.offer.name}. ` +
+        `Our team will verify the transfer and confirm shortly.`,
+    });
+
+    const adminUrl = `${req.protocol}://${req.get("host")}/admin/subscriptions`;
+    await notifyStaff({
+      subject: `Payment reported - ${updated.reference}`,
+      message:
+        `${updated.subscriber ? updated.subscriber.fullName : "An investor"} reported payment for subscription ` +
+        `${updated.reference} - ${updated.numberOfShares.toLocaleString()} shares (${subscription.offer.currency}` +
+        `${updated.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}) in ${subscription.offer.name}. ` +
+        `Please verify the transfer and confirm in the admin dashboard: ${adminUrl}`,
+    });
+
     res.redirect(`/offers/${req.params.offerId}/subscribe/success`);
   }
 );

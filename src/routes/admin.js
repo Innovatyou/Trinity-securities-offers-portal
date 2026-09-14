@@ -5,10 +5,10 @@ const db = require("../db");
 const { requireAdmin, requirePermission } = require("../middleware/adminAuth");
 const { handleAvatarUpload, deleteAvatarFile } = require("../middleware/upload");
 const { roleOptions } = require("../services/permissions");
-const veltrix = require("../services/veltrixClient");
 const mailer = require("../services/mailer");
 const receipt = require("../services/receipt");
 const { generateSubscriptionReference } = require("../services/reference");
+const { notifySubscriber } = require("../services/notifications");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -532,36 +532,5 @@ router.post("/users/:id/reset-password", requireAdmin, requirePermission("manage
   );
   res.redirect("/admin/users");
 });
-
-// ---------- Subscriber notifications ----------
-
-const NOTIFY_MODE = process.env.NOTIFICATIONS_MODE || "MOCK";
-
-/**
- * Emails/texts the subscriber behind a subscription through Veltrix.
- * NOTIFICATIONS_MODE=MOCK (default) only logs, so nothing is sent until
- * VELTRIX_API_KEY etc. are configured and NOTIFICATIONS_MODE=LIVE is set.
- * Best-effort: a failed notification never blocks the admin action.
- */
-async function notifySubscriber(subscription, { subject, message }) {
-  const subscriber = subscription && subscription.subscriber;
-  if (!subscriber) return;
-
-  if (NOTIFY_MODE !== "LIVE") {
-    console.log(`[notify:MOCK] ${subscriber.email || subscriber.phone}: ${subject}`);
-    return;
-  }
-
-  try {
-    if (subscriber.email) {
-      await mailer.sendEmail({ to: subscriber.email, toName: subscriber.fullName, subject, html: `<p>${message}</p>` });
-    }
-    if (subscriber.phone) {
-      await veltrix.sendSms({ to: subscriber.phone, message });
-    }
-  } catch (err) {
-    console.error("Subscriber notification failed:", err.message);
-  }
-}
 
 module.exports = router;

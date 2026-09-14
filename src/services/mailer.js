@@ -40,7 +40,7 @@ function getSmtpTransport() {
   return transport;
 }
 
-async function sendViaSmtp({ to, toName = "", subject, html, attachments }) {
+async function sendViaSmtp({ to, toName = "", subject, html, attachments, cc }) {
   const fromAddress = process.env.VELTRIX_EMAIL_FROM || process.env.SMTP_USER || "";
   if (!fromAddress) {
     throw new Error("VELTRIX_EMAIL_FROM (or SMTP_USER) is not set - needed as the SMTP \"from\" address.");
@@ -51,6 +51,7 @@ async function sendViaSmtp({ to, toName = "", subject, html, attachments }) {
     await getSmtpTransport().sendMail({
       from: `"${fromName}" <${fromAddress}>`,
       to: toName ? `"${toName}" <${to}>` : to,
+      cc: cc && cc.length ? cc : undefined,
       replyTo: process.env.VELTRIX_EMAIL_REPLY_TO || undefined,
       subject,
       html,
@@ -64,20 +65,29 @@ async function sendViaSmtp({ to, toName = "", subject, html, attachments }) {
 }
 
 /**
- * @param {{to: string, toName?: string, subject: string, html: string, attachments?: {filename: string, content: Buffer}[]}} params
+ * @param {{to: string, toName?: string, subject: string, html: string, attachments?: {filename: string, content: Buffer}[], cc?: string[]}} params
  *   `attachments` is only honored by the SMTP provider - Veltrix's transactional-emails API has no
  *   attachment field, so it's silently dropped there (the HTML body still carries the same content).
+ *   `cc` is sent as a real CC header on SMTP; Veltrix has no multi-recipient field, so each CC
+ *   address instead gets its own copy of the same email as a separate send.
  * @returns {Promise<{sent: boolean, message?: string}>}
  */
 async function sendEmail(params) {
   if (provider() === "SMTP") {
     return sendViaSmtp(params);
   }
+
   if (params.attachments && params.attachments.length) {
     console.warn("[mailer] EMAIL_DELIVERY_PROVIDER=VELTRIX cannot send attachments - sending body only.");
   }
-  const { attachments, ...veltrixParams } = params;
-  return veltrix.sendEmail(veltrixParams);
+  const { attachments, cc, ...veltrixParams } = params;
+  const result = await veltrix.sendEmail(veltrixParams);
+
+  if (cc && cc.length) {
+    await Promise.all(cc.map((addr) => veltrix.sendEmail({ ...veltrixParams, to: addr, toName: "" })));
+  }
+
+  return result;
 }
 
 module.exports = { sendEmail };
