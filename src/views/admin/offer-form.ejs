@@ -1,0 +1,68 @@
+<% const o = offer || {}; %>
+<form action="<%= offer ? `/admin/offers/${offer.id}` : '/admin/offers' %>" method="POST" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
+  <div class="grid grid-cols-2 gap-5">
+    <div class="col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Offer Name</label>
+      <input name="name" required value="<%= o.name || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="e.g. TRINITY SECURITIES RIGHTS ISSUE" />
+    </div>
+    <div class="col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Issuer</label>
+      <input name="issuer" required value="<%= o.issuer || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
+    <div class="col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Summary</label>
+      <textarea name="summary" rows="3" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm"><%= o.summary || '' %></textarea>
+    </div>
+    <div>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Price per Share (NGN)</label>
+      <input name="pricePerShare" type="number" step="0.01" required value="<%= o.pricePerShare || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
+    <div>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Closes At</label>
+      <input name="closesAt" type="date" required value="<%= o.closesAt ? o.closesAt.toISOString().slice(0,10) : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
+    <div>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Minimum Shares</label>
+      <input name="minimumShares" type="number" required value="<%= o.minimumShares || 10 %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
+    <div>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Multiple Of</label>
+      <input name="multipleOf" type="number" required value="<%= o.multipleOf || 10 %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
+    <div>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Maximum Shares (optional)</label>
+      <input name="maximumShares" type="number" value="<%= o.maximumShares || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
+    <div>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Status</label>
+      <select name="status" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm">
+        <% ["DRAFT", "OPEN", "CLOSED"].forEach(function(s) { %>
+          <option value="<%= s %>" <%= o.status === s ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Prospectus URL</label>
+      <input name="prospectusUrl" value="<%= o.prospectusUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
+    </div>
+    <div class="col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Term Sheet URL</label>
+      <input name="termSheetUrl" value="<%= o.termSheetUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
+    </div>
+    <div class="col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Pricing Supplement URL</label>
+      <input name="pricingSupplementUrl" value="<%= o.pricingSupplementUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
+    </div>
+    <div class="col-span-2">
+      <label class="flex items-center gap-2 text-sm text-navy-700">
+        <input type="checkbox" name="referralRequired" <%= o.referralRequired ? 'checked' : '' %> />
+        Referral code required to subscribe
+      </label>
+    </div>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <a href="/admin" class="flex-1 text-center border border-navy-200 text-navy-700 font-semibold py-2.5 rounded-xl">Cancel</a>
+    <button type="submit" class="flex-1 bg-navy-700 hover:bg-navy-800 text-white font-bold py-2.5 rounded-xl"><%= offer ? 'Save Changes' : 'Create Offer' %></button>
+  </div>
+</form>

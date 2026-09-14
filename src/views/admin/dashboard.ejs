@@ -1,0 +1,60 @@
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
+  <% const statLabels = { STARTED: "Started", ACCOUNT_VERIFIED: "Verified", AWAITING_PAYMENT: "Awaiting Payment", PAYMENT_REPORTED: "Payment Reported", CONFIRMED: "Confirmed" }; %>
+  <% Object.entries(statLabels).forEach(function([key, label]) { %>
+    <div class="bg-white rounded-xl border border-navy-100 p-4">
+      <div class="text-2xl font-extrabold text-navy-800"><%= counts[key] || 0 %></div>
+      <div class="text-xs text-navy-400"><%= label %></div>
+    </div>
+  <% }) %>
+</div>
+
+<div class="flex items-center justify-between mb-4">
+  <h2 class="font-bold text-navy-800">Offers</h2>
+  <a href="/admin/offers/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Offer</a>
+</div>
+
+<div class="bg-white rounded-xl border border-navy-100 overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Name</th>
+        <th class="px-4 py-3 font-semibold">Price/Share</th>
+        <th class="px-4 py-3 font-semibold">Closes</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!offers.length) { %>
+        <tr><td colspan="5" class="px-4 py-6 text-center text-navy-400">No offers yet. Create your first one.</td></tr>
+      <% } %>
+      <% offers.forEach(function(offer) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-semibold text-navy-800"><%= offer.name %></td>
+          <td class="px-4 py-3"><%= offer.currency %><%= offer.pricePerShare.toFixed(2) %></td>
+          <td class="px-4 py-3"><%= offer.closesAt.toLocaleDateString('en-GB') %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= offer.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700' : offer.status === 'CLOSED' ? 'bg-slate-100 text-slate-500' : 'bg-gold-50 text-gold-600' %>">
+              <%= offer.status %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+            <a href="/admin/offers/<%= offer.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+            <% if (offer.status !== 'OPEN') { %>
+              <form action="/admin/offers/<%= offer.id %>/status" method="POST" class="inline">
+                <input type="hidden" name="status" value="OPEN" />
+                <button class="font-semibold text-emerald-600 hover:underline">Open</button>
+              </form>
+            <% } else { %>
+              <form action="/admin/offers/<%= offer.id %>/status" method="POST" class="inline">
+                <input type="hidden" name="status" value="CLOSED" />
+                <button class="font-semibold text-red-600 hover:underline">Close</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

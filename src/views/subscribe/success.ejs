@@ -1,0 +1,16 @@
+<div class="text-center py-6">
+  <div class="h-16 w-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-6">&#10003;</div>
+  <h2 class="text-xl font-bold text-navy-800 mb-2">Subscription Received</h2>
+  <p class="text-sm text-navy-500 max-w-sm mx-auto mb-6">
+    Thank you for subscribing to <strong><%= offer.name %></strong>. Our back office will confirm your payment against
+    reference <strong class="font-mono"><%= subscription.reference %></strong> and your allotment status will be updated shortly.
+  </p>
+
+  <div class="rounded-xl border border-navy-100 p-5 text-left max-w-sm mx-auto mb-8 text-sm">
+    <div class="flex justify-between mb-2"><span class="text-navy-400">Reference</span><span class="font-mono font-bold text-navy-800"><%= subscription.reference %></span></div>
+    <div class="flex justify-between mb-2"><span class="text-navy-400">Shares</span><span class="font-semibold text-navy-800"><%= subscription.numberOfShares.toLocaleString() %></span></div>
+    <div class="flex justify-between"><span class="text-navy-400">Amount</span><span class="font-semibold text-navy-800"><%= offer.currency %><%= subscription.amount.toLocaleString(undefined, {minimumFractionDigits:2}) %></span></div>
+  </div>
+
+  <a href="/" class="inline-block bg-navy-700 hover:bg-navy-800 text-white font-bold px-6 py-3 rounded-xl">Back to Public Offers</a>
+</div>

@@ -1,0 +1,55 @@
+<div class="flex items-center gap-2 mb-4 text-sm">
+  <a href="/admin/subscriptions" class="px-3 py-1.5 rounded-lg <%= !statusFilter ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>">All</a>
+  <% ["PAYMENT_REPORTED", "CONFIRMED", "AWAITING_PAYMENT", "REJECTED"].forEach(function(s) { %>
+    <a href="/admin/subscriptions?status=<%= s %>" class="px-3 py-1.5 rounded-lg <%= statusFilter === s ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>"><%= s.replace('_', ' ') %></a>
+  <% }) %>
+</div>
+
+<div class="bg-white rounded-xl border border-navy-100 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Reference</th>
+        <th class="px-4 py-3 font-semibold">Offer</th>
+        <th class="px-4 py-3 font-semibold">Subscriber</th>
+        <th class="px-4 py-3 font-semibold">Shares</th>
+        <th class="px-4 py-3 font-semibold">Amount</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!subscriptions.length) { %>
+        <tr><td colspan="7" class="px-4 py-6 text-center text-navy-400">No subscriptions yet.</td></tr>
+      <% } %>
+      <% subscriptions.forEach(function(sub) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-mono text-xs font-semibold text-navy-800"><%= sub.reference %></td>
+          <td class="px-4 py-3"><%= sub.offer.name %></td>
+          <td class="px-4 py-3">
+            <%= sub.subscriber ? sub.subscriber.fullName : "-" %>
+            <% if (sub.isForMinor && sub.minor) { %><div class="text-xs text-navy-400">on behalf of <%= sub.minor.fullName %></div><% } %>
+          </td>
+          <td class="px-4 py-3"><%= sub.numberOfShares ? sub.numberOfShares.toLocaleString() : "-" %></td>
+          <td class="px-4 py-3"><%= sub.amount ? sub.offer.currency + sub.amount.toLocaleString(undefined, {minimumFractionDigits:2}) : "-" %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= sub.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : sub.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
+              <%= sub.status.replace('_', ' ') %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap space-x-2">
+            <% if (sub.status === 'PAYMENT_REPORTED') { %>
+              <form action="/admin/subscriptions/<%= sub.id %>/confirm" method="POST" class="inline">
+                <button class="font-semibold text-emerald-600 hover:underline">Confirm</button>
+              </form>
+              <form action="/admin/subscriptions/<%= sub.id %>/reject" method="POST" class="inline">
+                <button class="font-semibold text-red-600 hover:underline">Reject</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

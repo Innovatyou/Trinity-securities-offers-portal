@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/headAssets') %>
+</head>
+<body class="min-h-screen flex flex-col bg-market-pattern text-navy-900">
+  <%- include('partials/topbar') %>
+
+  <main class="flex-1 relative overflow-hidden">
+    <div class="watermark hidden sm:block">TSL</div>
+    <div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <%- include('partials/flash') %>
+      <%- body %>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

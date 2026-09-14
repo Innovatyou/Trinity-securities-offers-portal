@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/headAssets') %>
+</head>
+<body class="min-h-screen flex flex-col bg-market-pattern text-navy-900">
+  <header class="bg-navy-800 text-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+      <img src="<%= brand.logo %>" alt="<%= brand.name %> logo" class="h-10 w-10 rounded-full" />
+      <div class="leading-tight">
+        <div class="text-[11px] uppercase tracking-wider text-gold-400 font-semibold"><%= brand.portalName %></div>
+        <div class="text-lg sm:text-xl font-bold tracking-tight"><%= offer.name %></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 relative overflow-hidden">
+    <div class="watermark hidden sm:block">TSL</div>
+    <div class="relative max-w-2xl mx-auto px-4 sm:px-6 py-10">
+      <a href="/" class="inline-flex items-center gap-1 text-sm font-semibold text-navy-600 hover:text-navy-800 mb-6">
+        &larr; PUBLIC OFFERS
+      </a>
+
+      <nav class="flex items-center mb-10" aria-label="Progress">
+        <% const steps = ["Security", "Account", "Participation"]; %>
+        <% steps.forEach(function(label, i) { %>
+          <% const num = i + 1; %>
+          <div class="flex items-center <%= i < steps.length - 1 ? 'flex-1' : '' %>">
+            <div class="flex flex-col items-center gap-1 shrink-0">
+              <div class="h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold
+                <%= num < step ? 'bg-navy-700 text-white' : num === step ? 'border-2 border-navy-700 text-navy-700 bg-white' : 'border-2 border-navy-100 text-navy-400 bg-white' %>">
+                <% if (num < step) { %>&#10003;<% } else { %><%= num %><% } %>
+              </div>
+              <span class="text-xs font-medium <%= num <= step ? 'text-navy-700' : 'text-navy-400' %>"><%= label %></span>
+            </div>
+            <% if (i < steps.length - 1) { %>
+              <div class="flex-1 h-0.5 mx-2 <%= num < step ? 'bg-navy-700' : 'bg-navy-100' %>"></div>
+            <% } %>
+          </div>
+        <% }) %>
+      </nav>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-navy-100 p-6 sm:p-8">
+        <%- include('partials/flash') %>
+        <%- body %>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+  <script>window.SUBSCRIBE_BASE = "/offers/<%= offer.id %>/subscribe";</script>
+  <script src="/js/subscribe.js"></script>
+</body>
+</html>

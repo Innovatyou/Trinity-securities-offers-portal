@@ -1,0 +1,34 @@
+<h1 class="text-2xl font-bold text-navy-800 mb-1">Public Offers</h1>
+<p class="text-navy-400 text-sm mb-8">Current and upcoming share subscription offers from Trinity Securities Limited.</p>
+
+<% if (!offers.length) { %>
+  <div class="bg-white rounded-2xl border border-navy-100 p-10 text-center text-navy-400">
+    There are no offers open for subscription right now. Please check back soon.
+  </div>
+<% } else { %>
+  <div class="grid gap-5">
+    <% offers.forEach(function(offer) { %>
+      <a href="/offers/<%= offer.id %>" class="block bg-white rounded-2xl border border-navy-100 hover:border-navy-300 hover:shadow-md transition p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full
+                <%= offer.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
+                <%= offer.status === 'OPEN' ? 'Open for subscription' : 'Coming soon' %>
+              </span>
+            </div>
+            <h2 class="text-lg font-bold text-navy-800"><%= offer.name %></h2>
+            <p class="text-sm text-navy-400 mt-1"><%= offer.issuer %></p>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-xl font-extrabold text-navy-800"><%= offer.currency %><%= offer.pricePerShare.toFixed(2) %></div>
+            <div class="text-xs text-navy-400">per share</div>
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-navy-400">
+          Closes <%= offer.closesAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>

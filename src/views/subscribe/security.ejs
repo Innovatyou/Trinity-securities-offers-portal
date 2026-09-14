@@ -1,0 +1,37 @@
+<h2 class="text-xl font-bold text-navy-800 mb-1">Security Verification</h2>
+<p class="text-sm text-navy-400 mb-6">
+  Confirm it's you before we continue. Enter the email or phone number on your Trinity Securities account to receive a one-time code.
+</p>
+
+<div id="security-error" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm"></div>
+
+<label class="block text-sm font-semibold text-navy-700 mb-1">Email or Phone Number</label>
+<div class="flex gap-2 mb-2">
+  <input
+    id="destination"
+    type="text"
+    placeholder="you@example.com or 080XXXXXXXX"
+    class="flex-1 rounded-xl border border-navy-100 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-navy-600"
+  />
+  <button id="send-otp-btn" type="button" class="shrink-0 bg-navy-700 hover:bg-navy-800 text-white font-semibold px-5 rounded-xl text-sm">
+    Send code
+  </button>
+</div>
+
+<div id="otp-section" class="hidden mt-6 pt-6 border-t border-navy-100">
+  <label class="block text-sm font-semibold text-navy-700 mb-1">One-Time Code</label>
+  <p id="otp-dev-hint" class="hidden text-xs text-gold-600 mb-2"></p>
+  <div class="flex gap-2">
+    <input
+      id="otp-code"
+      type="text"
+      inputmode="numeric"
+      maxlength="6"
+      placeholder="6-digit code"
+      class="flex-1 rounded-xl border border-navy-100 px-4 py-3 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-navy-600"
+    />
+    <button id="verify-otp-btn" type="button" class="shrink-0 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold px-5 rounded-xl text-sm">
+      Verify &amp; Continue
+    </button>
+  </div>
+</div>
