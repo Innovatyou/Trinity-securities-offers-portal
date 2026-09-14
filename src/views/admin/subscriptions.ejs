@@ -41,6 +41,7 @@
           <td class="px-4 py-3">
             <%= sub.subscriber ? sub.subscriber.fullName : "-" %>
             <% if (sub.isForMinor && sub.minor) { %><div class="text-xs text-navy-400">on behalf of <%= sub.minor.fullName %></div><% } %>
+            <% if (sub.subscriber && sub.subscriber.trinityAccountId) { %><div class="text-xs text-navy-400">Acct ID: <%= sub.subscriber.trinityAccountId %></div><% } %>
           </td>
           <td class="px-4 py-3"><%= sub.numberOfShares ? sub.numberOfShares.toLocaleString() : "-" %></td>
           <td class="px-4 py-3"><%= sub.amount ? sub.offer.currency + sub.amount.toLocaleString(undefined, {minimumFractionDigits:2}) : "-" %></td>

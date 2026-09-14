@@ -8,17 +8,17 @@
   <% }) %>
 </div>
 
-<div class="flex items-center justify-between mb-4">
+<div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
   <h2 class="font-bold text-navy-800">Offers</h2>
   <% if (can('manage_offers')) { %>
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-2 flex-wrap">
     <a href="/admin/offers/export.csv" class="text-sm font-semibold border border-navy-200 text-navy-700 px-4 py-2 rounded-lg hover:bg-navy-50">Export CSV</a>
     <a href="/admin/offers/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Offer</a>
   </div>
   <% } %>
 </div>
 
-<div class="bg-white rounded-xl border border-navy-100 overflow-hidden">
+<div class="bg-white rounded-xl border border-navy-100 overflow-x-auto">
   <table class="w-full text-sm">
     <thead class="bg-navy-50 text-navy-500 text-left">
       <tr>

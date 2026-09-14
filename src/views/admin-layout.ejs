@@ -6,14 +6,19 @@
 <body class="min-h-screen bg-slate-100 text-navy-900">
   <% const showShell = currentPath !== "/admin/login"; %>
   <% if (showShell) { %>
-  <div class="flex min-h-screen">
-    <aside class="w-56 bg-navy-800 text-white flex flex-col shrink-0">
+  <div class="md:flex min-h-screen">
+    <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/40 z-30 md:hidden"></div>
+    <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-navy-800 text-white flex flex-col shrink-0 -translate-x-full transition-transform duration-200 md:static md:translate-x-0 md:w-56">
       <div class="flex items-center gap-3 px-5 py-5 border-b border-navy-700">
         <img src="<%= brand.logo %>" class="h-9 w-9 rounded-full" alt="logo" />
         <div class="text-sm font-bold leading-tight">Trinity Securities<br/><span class="text-gold-400 font-semibold text-xs">Admin</span></div>
+        <button id="sidebar-close-btn" type="button" class="ml-auto md:hidden text-navy-300 hover:text-white text-2xl leading-none px-1">&times;</button>
       </div>
-      <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+      <nav class="flex-1 px-3 py-4 space-y-1 text-sm overflow-y-auto">
         <a href="/admin" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin' ? 'bg-navy-700 font-semibold' : '' %>">Dashboard</a>
+        <% if (typeof can === 'function' && can('view_executive_dashboard')) { %>
+        <a href="/admin/executive" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/executive' ? 'bg-navy-700 font-semibold' : '' %>">Executive Dashboard</a>
+        <% } %>
         <a href="/admin/profile" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/profile' ? 'bg-navy-700 font-semibold' : '' %>">My Profile</a>
         <% if (typeof can === 'function' && can('manage_offers')) { %>
         <a href="/admin/offers/new" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/offers/new' ? 'bg-navy-700 font-semibold' : '' %>">New Offer</a>
@@ -46,15 +51,36 @@
       </form>
     </aside>
     <div class="flex-1 min-w-0">
-      <header class="bg-white border-b border-slate-200 px-6 py-4">
-        <h1 class="text-lg font-bold text-navy-800"><%= title %></h1>
+      <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center gap-3">
+        <button id="sidebar-open-btn" type="button" class="md:hidden text-navy-700 text-2xl leading-none px-1" aria-label="Open menu">&#9776;</button>
+        <h1 class="text-lg font-bold text-navy-800 truncate"><%= title %></h1>
       </header>
-      <main class="p-6 max-w-5xl">
+      <main class="p-4 sm:p-6 max-w-5xl">
         <%- include('partials/flash') %>
         <%- body %>
       </main>
     </div>
   </div>
+  <script>
+    (function () {
+      const sidebar = document.getElementById("admin-sidebar");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      const openBtn = document.getElementById("sidebar-open-btn");
+      const closeBtn = document.getElementById("sidebar-close-btn");
+
+      function openSidebar() {
+        sidebar.classList.remove("-translate-x-full");
+        backdrop.classList.remove("hidden");
+      }
+      function closeSidebar() {
+        sidebar.classList.add("-translate-x-full");
+        backdrop.classList.add("hidden");
+      }
+      if (openBtn) openBtn.addEventListener("click", openSidebar);
+      if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+      if (backdrop) backdrop.addEventListener("click", closeSidebar);
+    })();
+  </script>
   <% } else { %>
     <main class="min-h-screen flex items-center justify-center px-4">
       <%- body %>

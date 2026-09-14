@@ -61,6 +61,7 @@ db.exec(`
     bvn_verified INTEGER NOT NULL DEFAULT 0,
     email TEXT,
     phone TEXT,
+    trinity_account_id TEXT,
     created_at TEXT NOT NULL
   );
 
@@ -104,6 +105,18 @@ if (!adminUserColumns.includes("status")) {
 }
 if (!adminUserColumns.includes("avatar_url")) {
   db.exec(`ALTER TABLE admin_users ADD COLUMN avatar_url TEXT`);
+}
+
+// Migrate subscribers for databases created before email/phone/trinity_account_id existed.
+const subscriberColumns = db.prepare(`PRAGMA table_info(subscribers)`).all().map((c) => c.name);
+if (!subscriberColumns.includes("email")) {
+  db.exec(`ALTER TABLE subscribers ADD COLUMN email TEXT`);
+}
+if (!subscriberColumns.includes("phone")) {
+  db.exec(`ALTER TABLE subscribers ADD COLUMN phone TEXT`);
+}
+if (!subscriberColumns.includes("trinity_account_id")) {
+  db.exec(`ALTER TABLE subscribers ADD COLUMN trinity_account_id TEXT`);
 }
 
 function genId() {
@@ -151,6 +164,7 @@ function rowToSubscriber(row) {
     bvnVerified: Boolean(row.bvn_verified),
     email: row.email,
     phone: row.phone,
+    trinityAccountId: row.trinity_account_id,
     createdAt: new Date(row.created_at),
   };
 }
@@ -321,18 +335,20 @@ function getSubscriberByBvn(bvn) {
 // step (see subscribe.js) - optional, and only overwrite an existing value
 // when a new one is actually supplied (COALESCE), so a returning subscriber
 // verifying with the other channel doesn't blank out the one already on file.
-function upsertSubscriberByBvn({ bvn, fullName, email, phone }) {
+function upsertSubscriberByBvn({ bvn, fullName, email, phone, trinityAccountId }) {
   const existing = getSubscriberByBvn(bvn);
   if (existing) {
     db.prepare(
-      `UPDATE subscribers SET bvn_verified = 1, full_name = ?, email = COALESCE(?, email), phone = COALESCE(?, phone) WHERE id = ?`
-    ).run(fullName, email || null, phone || null, existing.id);
+      `UPDATE subscribers SET bvn_verified = 1, full_name = ?, email = COALESCE(?, email), phone = COALESCE(?, phone),
+        trinity_account_id = COALESCE(?, trinity_account_id) WHERE id = ?`
+    ).run(fullName, email || null, phone || null, trinityAccountId || null, existing.id);
     return getSubscriberById(existing.id);
   }
   const id = genId();
   db.prepare(
-    `INSERT INTO subscribers (id, full_name, bvn, bvn_verified, email, phone, created_at) VALUES (?, ?, ?, 1, ?, ?, ?)`
-  ).run(id, fullName, bvn, email || null, phone || null, now());
+    `INSERT INTO subscribers (id, full_name, bvn, bvn_verified, email, phone, trinity_account_id, created_at)
+     VALUES (?, ?, ?, 1, ?, ?, ?, ?)`
+  ).run(id, fullName, bvn, email || null, phone || null, trinityAccountId || null, now());
   return getSubscriberById(id);
 }
 
@@ -412,6 +428,33 @@ function listSubscriptions({ status } = {}) {
 function countSubscriptionsByStatus() {
   const rows = db.prepare(`SELECT status, COUNT(*) as count FROM subscriptions GROUP BY status`).all();
   return Object.fromEntries(rows.map((r) => [r.status, r.count]));
+}
+
+// Per-offer rollup for the executive dashboard - confirmed count/amount plus
+// total subscriptions started, so leadership can see funnel + raised amount
+// per offer without exposing individual investor records.
+function getOfferSummaries() {
+  const rows = db
+    .prepare(
+      `SELECT o.id, o.name, o.currency, o.status,
+        COUNT(s.id) AS total_subscriptions,
+        COUNT(CASE WHEN s.status = 'CONFIRMED' THEN 1 END) AS confirmed_count,
+        COALESCE(SUM(CASE WHEN s.status = 'CONFIRMED' THEN s.amount END), 0) AS confirmed_amount
+       FROM offers o
+       LEFT JOIN subscriptions s ON s.offer_id = o.id
+       GROUP BY o.id
+       ORDER BY o.created_at DESC`
+    )
+    .all();
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    currency: r.currency,
+    status: r.status,
+    totalSubscriptions: r.total_subscriptions,
+    confirmedCount: r.confirmed_count,
+    confirmedAmount: r.confirmed_amount,
+  }));
 }
 
 function deleteSubscription(id) {
@@ -516,6 +559,7 @@ module.exports = {
   updateSubscription,
   listSubscriptions,
   countSubscriptionsByStatus,
+  getOfferSummaries,
   deleteSubscription,
   deleteSubscriptions,
   findAdminByEmail,

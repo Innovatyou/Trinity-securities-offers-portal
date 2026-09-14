@@ -101,6 +101,7 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     fullName: verifiedBvn.fullName,
     email: contactEmail,
     phone: contactPhone,
+    trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
   });
 
   db.updateSubscription(subscription.id, {

@@ -125,6 +125,24 @@ router.get("/", requireAdmin, (req, res) => {
   });
 });
 
+// ---------- Executive Dashboard ----------
+
+router.get("/executive", requireAdmin, requirePermission("view_executive_dashboard"), (req, res) => {
+  const offerSummaries = db.getOfferSummaries();
+  const counts = db.countSubscriptionsByStatus();
+  const totalConfirmedAmount = offerSummaries.reduce((sum, o) => sum + o.confirmedAmount, 0);
+  const totalConfirmedCount = offerSummaries.reduce((sum, o) => sum + o.confirmedCount, 0);
+
+  res.render("admin/executive", {
+    title: "Executive Dashboard",
+    layout: "admin-layout",
+    offerSummaries,
+    counts,
+    totalConfirmedAmount,
+    totalConfirmedCount,
+  });
+});
+
 // ---------- Offers CRUD ----------
 
 router.get("/offers/new", requireAdmin, requirePermission("manage_offers"), (req, res) => {
@@ -297,6 +315,7 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
     fullName,
     email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
     phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
+    trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
   });
 
   const alreadyConfirmed = req.body.status === "CONFIRMED";

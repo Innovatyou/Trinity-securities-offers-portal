@@ -1,0 +1,56 @@
+<% const primaryCurrency = (offerSummaries[0] && offerSummaries[0].currency) || "NGN"; %>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+  <div class="bg-navy-800 text-white rounded-xl p-5">
+    <div class="text-2xl sm:text-3xl font-extrabold"><%= primaryCurrency %><%= totalConfirmedAmount.toLocaleString(undefined, {minimumFractionDigits:2}) %></div>
+    <div class="text-xs text-gold-400 font-semibold uppercase tracking-wide mt-1">Total Confirmed Amount</div>
+  </div>
+  <div class="bg-white border border-navy-100 rounded-xl p-5">
+    <div class="text-2xl sm:text-3xl font-extrabold text-navy-800"><%= totalConfirmedCount.toLocaleString() %></div>
+    <div class="text-xs text-navy-400 font-semibold uppercase tracking-wide mt-1">Confirmed Subscriptions</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-8">
+  <% const statLabels = { STARTED: "Started", ACCOUNT_VERIFIED: "Verified", AWAITING_PAYMENT: "Awaiting Payment", PAYMENT_REPORTED: "Payment Reported", CONFIRMED: "Confirmed", REJECTED: "Rejected" }; %>
+  <% Object.entries(statLabels).forEach(function([key, label]) { %>
+    <div class="bg-white rounded-xl border border-navy-100 p-4">
+      <div class="text-xl font-extrabold text-navy-800"><%= counts[key] || 0 %></div>
+      <div class="text-xs text-navy-400"><%= label %></div>
+    </div>
+  <% }) %>
+</div>
+
+<h2 class="font-bold text-navy-800 mb-4">Offers Summary</h2>
+<div class="bg-white rounded-xl border border-navy-100 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Offer</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold">Confirmed</th>
+        <th class="px-4 py-3 font-semibold">Confirmed Amount</th>
+        <th class="px-4 py-3 font-semibold">Total Subscriptions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!offerSummaries.length) { %>
+        <tr><td colspan="5" class="px-4 py-6 text-center text-navy-400">No offers yet.</td></tr>
+      <% } %>
+      <% offerSummaries.forEach(function(o) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-semibold text-navy-800"><%= o.name %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= o.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700' : o.status === 'CLOSED' ? 'bg-slate-100 text-slate-500' : 'bg-gold-50 text-gold-600' %>">
+              <%= o.status %>
+            </span>
+          </td>
+          <td class="px-4 py-3"><%= o.confirmedCount.toLocaleString() %></td>
+          <td class="px-4 py-3 font-semibold text-navy-800"><%= o.currency %><%= o.confirmedAmount.toLocaleString(undefined, {minimumFractionDigits:2}) %></td>
+          <td class="px-4 py-3 text-navy-400"><%= o.totalSubscriptions.toLocaleString() %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

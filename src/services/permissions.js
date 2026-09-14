@@ -8,7 +8,7 @@
 const ROLES = {
   SUPER_ADMIN: {
     label: "Super Admin",
-    permissions: ["manage_offers", "manage_subscriptions", "manage_admins"],
+    permissions: ["manage_offers", "manage_subscriptions", "manage_admins", "view_executive_dashboard"],
   },
   OFFERS_MANAGER: {
     label: "Offers Manager",
@@ -21,6 +21,10 @@ const ROLES = {
   FINANCE: {
     label: "Finance",
     permissions: ["manage_subscriptions"],
+  },
+  EXECUTIVE: {
+    label: "Executive",
+    permissions: ["view_executive_dashboard"],
   },
 };
 
