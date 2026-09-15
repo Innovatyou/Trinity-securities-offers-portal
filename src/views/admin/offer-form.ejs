@@ -1,15 +1,15 @@
 <% const o = offer || {}; %>
 <form action="<%= offer ? `/admin/offers/${offer.id}` : '/admin/offers' %>" method="POST" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
-  <div class="grid grid-cols-2 gap-5">
-    <div class="col-span-2">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Offer Name</label>
       <input name="name" required value="<%= o.name || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="e.g. TRINITY SECURITIES RIGHTS ISSUE" />
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Issuer</label>
       <input name="issuer" required value="<%= o.issuer || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Summary</label>
       <textarea name="summary" rows="3" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm"><%= o.summary || '' %></textarea>
     </div>
@@ -41,19 +41,19 @@
         <% }) %>
       </select>
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Prospectus URL</label>
       <input name="prospectusUrl" value="<%= o.prospectusUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Term Sheet URL</label>
       <input name="termSheetUrl" value="<%= o.termSheetUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Pricing Supplement URL</label>
       <input name="pricingSupplementUrl" value="<%= o.pricingSupplementUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="flex items-center gap-2 text-sm text-navy-700">
         <input type="checkbox" name="referralRequired" <%= o.referralRequired ? 'checked' : '' %> />
         Referral code required to subscribe

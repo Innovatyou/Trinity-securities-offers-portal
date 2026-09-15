@@ -1,72 +1,84 @@
-<form action="/admin/subscriptions" method="POST" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
+<% const sub = typeof subscription !== 'undefined' ? subscription : null; %>
+<% const subscriber = sub && sub.subscriber; %>
+<% const minor = sub && sub.minor; %>
+
+<form action="<%= sub ? `/admin/subscriptions/${sub.id}` : '/admin/subscriptions' %>" method="POST" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
+  <% if (!sub) { %>
   <p class="text-xs text-navy-400 -mt-1">
     For subscriptions submitted offline (e.g. via the emailed KYC form) that have already been
     reviewed. Investor details are taken as entered here - not re-verified against BVN/NIN.
   </p>
+  <% } %>
 
   <div>
     <label class="block text-sm font-semibold text-navy-700 mb-1">Offer</label>
-    <select name="offerId" required class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm">
-      <option value="">Select an offer&hellip;</option>
-      <% offers.forEach(function(o) { %>
-        <option value="<%= o.id %>" data-price="<%= o.pricePerShare %>" data-min="<%= o.minimumShares %>" data-multiple="<%= o.multipleOf %>" data-max="<%= o.maximumShares || '' %>" data-currency="<%= o.currency %>">
-          <%= o.name %> (<%= o.currency %><%= o.pricePerShare.toFixed(2) %>/share)
-        </option>
-      <% }) %>
-    </select>
+    <% if (sub) { %>
+      <div class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm bg-slate-50 text-navy-600"><%= sub.offer.name %></div>
+      <p class="text-xs text-navy-400 mt-1">The offer can't be changed after a subscription is created.</p>
+    <% } else { %>
+      <select name="offerId" required class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm">
+        <option value="">Select an offer&hellip;</option>
+        <% offers.forEach(function(o) { %>
+          <option value="<%= o.id %>" data-price="<%= o.pricePerShare %>" data-min="<%= o.minimumShares %>" data-multiple="<%= o.multipleOf %>" data-max="<%= o.maximumShares || '' %>" data-currency="<%= o.currency %>">
+            <%= o.name %> (<%= o.currency %><%= o.pricePerShare.toFixed(2) %>/share)
+          </option>
+        <% }) %>
+      </select>
+    <% } %>
   </div>
 
-  <div class="grid grid-cols-2 gap-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">Investor Full Name</label>
-      <input name="fullName" required class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="fullName" required value="<%= subscriber ? subscriber.fullName : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">BVN</label>
-      <input name="bvn" required pattern="\d{11}" maxlength="11" inputmode="numeric" placeholder="11-digit BVN" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="bvn" required pattern="\d{11}" maxlength="11" inputmode="numeric" placeholder="11-digit BVN" value="<%= subscriber ? subscriber.bvn : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Email or Phone Number</label>
-      <input name="contactDestination" required placeholder="you@example.com or 080XXXXXXXX" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="contactDestination" required placeholder="you@example.com or 080XXXXXXXX" value="<%= subscriber ? (subscriber.email || subscriber.phone || '') : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
       <p class="text-xs text-navy-400 mt-1">Used to send updates and the payment receipt.</p>
     </div>
-    <div class="col-span-2">
+    <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Trinity Securities Account ID <span class="text-navy-400 font-normal">(optional)</span></label>
-      <input name="trinityAccountId" placeholder="e.g. TSL-AC-00123" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="trinityAccountId" placeholder="e.g. TSL-AC-00123" value="<%= subscriber ? (subscriber.trinityAccountId || '') : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
   </div>
 
   <div>
     <label class="flex items-center gap-2 text-sm font-semibold text-navy-700">
-      <input id="sub-form-minor-toggle" type="checkbox" class="h-4 w-4" />
+      <input id="sub-form-minor-toggle" type="checkbox" <%= sub && sub.isForMinor ? 'checked' : '' %> class="h-4 w-4" />
       This subscription is on behalf of a minor
     </label>
   </div>
 
-  <div id="sub-form-minor-panel" class="hidden rounded-xl border border-gold-100 bg-gold-50 p-5 grid grid-cols-2 gap-5">
-    <input type="hidden" name="subscriptionFor" id="sub-form-subscription-for" value="me" />
+  <div id="sub-form-minor-panel" class="<%= sub && sub.isForMinor ? '' : 'hidden' %> rounded-xl border border-gold-100 bg-gold-50 p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <input type="hidden" name="subscriptionFor" id="sub-form-subscription-for" value="<%= sub && sub.isForMinor ? 'minor' : 'me' %>" />
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">Minor Full Name</label>
-      <input name="minorFullName" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="minorFullName" value="<%= minor ? minor.fullName : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">Minor NIN</label>
-      <input name="minorNin" pattern="\d{11}" maxlength="11" inputmode="numeric" placeholder="11-digit NIN" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="minorNin" pattern="\d{11}" maxlength="11" inputmode="numeric" placeholder="11-digit NIN" value="<%= minor ? minor.nin : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
   </div>
 
-  <div class="grid grid-cols-2 gap-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">Number of Shares</label>
-      <input id="sub-form-shares" name="numberOfShares" type="number" required class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
-      <p class="text-xs text-navy-400 mt-1">Amount: <span id="sub-form-amount-preview" class="font-semibold text-navy-700">-</span></p>
+      <input id="sub-form-shares" name="numberOfShares" type="number" required value="<%= sub ? sub.numberOfShares : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <p class="text-xs text-navy-400 mt-1">Amount: <span id="sub-form-amount-preview" class="font-semibold text-navy-700"><%= sub ? sub.offer.currency + sub.amount.toLocaleString(undefined, {minimumFractionDigits:2}) : '-' %></span></p>
     </div>
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">Referral Code (optional)</label>
-      <input name="referralCode" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <input name="referralCode" value="<%= sub ? (sub.referralCode || '') : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
   </div>
 
+  <% if (!sub) { %>
   <div>
     <label class="block text-sm font-semibold text-navy-700 mb-1">Status</label>
     <select name="status" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm">
@@ -74,10 +86,15 @@
       <option value="CONFIRMED">Confirmed (payment already verified)</option>
     </select>
   </div>
+  <% } else { %>
+  <p class="text-xs text-navy-400">
+    Status (currently <strong><%= sub.status.replace('_', ' ') %></strong>) isn't changed here - use Confirm/Reject on the Subscriptions list.
+  </p>
+  <% } %>
 
   <div class="flex gap-3 pt-2">
     <a href="/admin/subscriptions" class="flex-1 text-center border border-navy-200 text-navy-700 font-semibold py-2.5 rounded-xl hover:bg-navy-50">Cancel</a>
-    <button type="submit" class="flex-1 bg-navy-700 hover:bg-navy-800 text-white font-bold py-2.5 rounded-xl">Create Subscription</button>
+    <button type="submit" class="flex-1 bg-navy-700 hover:bg-navy-800 text-white font-bold py-2.5 rounded-xl"><%= sub ? 'Save Changes' : 'Create Subscription' %></button>
   </div>
 </form>
 
@@ -89,18 +106,27 @@
     const minorToggle = document.getElementById("sub-form-minor-toggle");
     const minorPanel = document.getElementById("sub-form-minor-panel");
     const subscriptionForInput = document.getElementById("sub-form-subscription-for");
+    const fixedPrice = <%- sub ? JSON.stringify({ price: sub.offer.pricePerShare, currency: sub.offer.currency }) : 'null' %>;
 
     function refreshAmount() {
-      const opt = offerSelect.options[offerSelect.selectedIndex];
-      const price = opt ? parseFloat(opt.dataset.price || "0") : 0;
-      const currency = opt ? opt.dataset.currency || "NGN" : "NGN";
+      let price, currency;
+      if (fixedPrice) {
+        price = fixedPrice.price;
+        currency = fixedPrice.currency;
+      } else if (offerSelect) {
+        const opt = offerSelect.options[offerSelect.selectedIndex];
+        price = opt ? parseFloat(opt.dataset.price || "0") : 0;
+        currency = opt ? opt.dataset.currency || "NGN" : "NGN";
+      } else {
+        return;
+      }
       const shares = parseInt(sharesInput.value, 10);
       amountPreview.textContent =
         Number.isInteger(shares) && shares > 0
           ? `${currency}${(shares * price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
           : "-";
     }
-    offerSelect.addEventListener("change", refreshAmount);
+    if (offerSelect) offerSelect.addEventListener("change", refreshAmount);
     sharesInput.addEventListener("input", refreshAmount);
 
     minorToggle.addEventListener("change", function () {

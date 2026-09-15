@@ -246,7 +246,7 @@ function offerDataFromBody(body) {
 
 // ---------- Subscriptions ----------
 
-router.get("/subscriptions", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+router.get("/subscriptions", requireAdmin, (req, res) => {
   const statusFilter = req.query.status;
   const subscriptions = db.listSubscriptions({ status: statusFilter || undefined });
   res.render("admin/subscriptions", {
@@ -338,6 +338,95 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
   });
 
   req.flash("success", `Subscription ${subscription.reference} created for ${fullName}.`);
+  res.redirect("/admin/subscriptions");
+});
+
+router.get("/subscriptions/:id/edit", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+  const subscription = db.getSubscriptionById(req.params.id);
+  if (!subscription) {
+    req.flash("error", "Subscription not found.");
+    return res.redirect("/admin/subscriptions");
+  }
+  res.render("admin/subscription-form", {
+    title: "Edit Subscription",
+    layout: "admin-layout",
+    offers: db.listOffers(),
+    subscription,
+  });
+});
+
+router.post("/subscriptions/:id", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+  const subscription = db.getSubscriptionById(req.params.id);
+  if (!subscription) {
+    req.flash("error", "Subscription not found.");
+    return res.redirect("/admin/subscriptions");
+  }
+  const offer = subscription.offer; // the offer itself isn't editable here - see subscription-form.ejs
+
+  const fullName = (req.body.fullName || "").trim();
+  const bvn = (req.body.bvn || "").trim();
+  const contactDestination = (req.body.contactDestination || "").trim();
+  const isForMinor = req.body.subscriptionFor === "minor";
+  const shares = parseInt(req.body.numberOfShares, 10);
+
+  if (!fullName || !/^\d{11}$/.test(bvn)) {
+    req.flash("error", "Enter the investor's full name and an 11-digit BVN.");
+    return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
+  }
+  if (!contactDestination) {
+    req.flash("error", "Enter the investor's email or phone number.");
+    return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
+  }
+  if (
+    !Number.isInteger(shares) ||
+    shares < offer.minimumShares ||
+    shares % offer.multipleOf !== 0 ||
+    (offer.maximumShares && shares > offer.maximumShares)
+  ) {
+    req.flash(
+      "error",
+      `Enter a valid number of shares (minimum ${offer.minimumShares}, in multiples of ${offer.multipleOf}).`
+    );
+    return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
+  }
+
+  let minorId = subscription.minorId;
+  if (isForMinor) {
+    const minorName = (req.body.minorFullName || "").trim();
+    const minorNin = (req.body.minorNin || "").trim();
+    if (!minorName || !/^\d{11}$/.test(minorNin)) {
+      req.flash("error", "Enter the minor's full name and an 11-digit NIN.");
+      return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
+    }
+    minorId = subscription.minorId
+      ? db.updateMinor(subscription.minorId, { nin: minorNin, fullName: minorName }).id
+      : db.createMinor({ nin: minorNin, fullName: minorName }).id;
+  }
+
+  if (subscription.subscriberId) {
+    try {
+      db.updateSubscriber(subscription.subscriberId, {
+        fullName,
+        bvn,
+        email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
+        phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
+        trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
+      });
+    } catch (err) {
+      req.flash("error", "That BVN is already used by another subscriber.");
+      return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
+    }
+  }
+
+  db.updateSubscription(subscription.id, {
+    isForMinor,
+    minorId: isForMinor ? minorId : null,
+    numberOfShares: shares,
+    amount: shares * offer.pricePerShare,
+    referralCode: (req.body.referralCode || "").trim() || null,
+  });
+
+  req.flash("success", `Subscription ${subscription.reference} updated.`);
   res.redirect("/admin/subscriptions");
 });
 

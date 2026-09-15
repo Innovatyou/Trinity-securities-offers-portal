@@ -352,6 +352,18 @@ function upsertSubscriberByBvn({ bvn, fullName, email, phone, trinityAccountId }
   return getSubscriberById(id);
 }
 
+// Direct update-by-id for the admin "Edit Subscription" form - distinct from
+// upsertSubscriberByBvn() above, which dedups by BVN for the public flow.
+// bvn has a UNIQUE constraint, so this throws if the new value collides
+// with a different subscriber - callers should catch and show a friendly
+// error rather than a raw SQLite constraint message.
+function updateSubscriber(id, { fullName, bvn, email, phone, trinityAccountId }) {
+  db.prepare(
+    `UPDATE subscribers SET full_name = ?, bvn = ?, email = ?, phone = ?, trinity_account_id = ? WHERE id = ?`
+  ).run(fullName, bvn, email || null, phone || null, trinityAccountId || null, id);
+  return getSubscriberById(id);
+}
+
 function getMinorById(id) {
   return rowToMinor(db.prepare(`SELECT * FROM minor_beneficiaries WHERE id = ?`).get(id));
 }
@@ -361,6 +373,11 @@ function createMinor({ nin, fullName }) {
   db.prepare(
     `INSERT INTO minor_beneficiaries (id, full_name, nin, nin_verified, created_at) VALUES (?, ?, ?, 1, ?)`
   ).run(id, fullName, nin, now());
+  return getMinorById(id);
+}
+
+function updateMinor(id, { nin, fullName }) {
+  db.prepare(`UPDATE minor_beneficiaries SET full_name = ?, nin = ? WHERE id = ?`).run(fullName, nin, id);
   return getMinorById(id);
 }
 
@@ -393,6 +410,7 @@ function updateSubscription(id, data) {
     minor_id: data.minorId !== undefined ? data.minorId : current.minor_id,
     number_of_shares: data.numberOfShares !== undefined ? data.numberOfShares : current.number_of_shares,
     amount: data.amount !== undefined ? data.amount : current.amount,
+    referral_code: data.referralCode !== undefined ? data.referralCode : current.referral_code,
     payment_method: data.paymentMethod !== undefined ? data.paymentMethod : current.payment_method,
     status: data.status !== undefined ? data.status : current.status,
     consent_accepted_at:
@@ -409,7 +427,8 @@ function updateSubscription(id, data) {
   db.prepare(
     `UPDATE subscriptions SET
       subscriber_id = @subscriber_id, is_for_minor = @is_for_minor, minor_id = @minor_id,
-      number_of_shares = @number_of_shares, amount = @amount, payment_method = @payment_method,
+      number_of_shares = @number_of_shares, amount = @amount, referral_code = @referral_code,
+      payment_method = @payment_method,
       status = @status, consent_accepted_at = @consent_accepted_at, transfer_reported_at = @transfer_reported_at,
       confirmed_at = @confirmed_at, confirmed_by = @confirmed_by, updated_at = @updated_at
      WHERE id = @id`
@@ -552,8 +571,10 @@ module.exports = {
   getSubscriberById,
   getSubscriberByBvn,
   upsertSubscriberByBvn,
+  updateSubscriber,
   getMinorById,
   createMinor,
+  updateMinor,
   getSubscriptionById,
   createSubscription,
   updateSubscription,

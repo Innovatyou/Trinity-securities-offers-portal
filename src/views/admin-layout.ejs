@@ -23,9 +23,7 @@
         <% if (typeof can === 'function' && can('manage_offers')) { %>
         <a href="/admin/offers/new" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/offers/new' ? 'bg-navy-700 font-semibold' : '' %>">New Offer</a>
         <% } %>
-        <% if (typeof can === 'function' && can('manage_subscriptions')) { %>
         <a href="/admin/subscriptions" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/subscriptions' ? 'bg-navy-700 font-semibold' : '' %>">Subscriptions</a>
-        <% } %>
         <% if (typeof can === 'function' && can('manage_admins')) { %>
         <a href="/admin/users" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/users') ? 'bg-navy-700 font-semibold' : '' %>">Admin Users</a>
         <% } %>
