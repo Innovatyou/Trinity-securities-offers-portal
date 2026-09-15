@@ -430,7 +430,7 @@ router.post("/subscriptions/:id", requireAdmin, requirePermission("manage_subscr
   res.redirect("/admin/subscriptions");
 });
 
-router.post("/subscriptions/:id/confirm", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
+router.post("/subscriptions/:id/confirm", requireAdmin, requirePermission("confirm_payment"), async (req, res) => {
   const subscription = db.updateSubscription(req.params.id, {
     status: "CONFIRMED",
     confirmedAt: new Date(),
@@ -444,7 +444,7 @@ router.post("/subscriptions/:id/confirm", requireAdmin, requirePermission("manag
   res.redirect("/admin/subscriptions");
 });
 
-router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("manage_subscriptions"), async (req, res) => {
+router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("confirm_payment"), async (req, res) => {
   const subscription = db.updateSubscription(req.params.id, { status: "REJECTED" });
   await notifySubscriber(subscription, {
     subject: "Your subscription could not be confirmed",
@@ -595,9 +595,8 @@ router.post("/users", requireAdmin, requirePermission("manage_admins"), async (r
 
   req.flash(
     "success",
-    emailed
-      ? `Admin created: ${email} - their login details have been emailed to them.`
-      : `Admin created: ${email} / ${tempPassword} - could not email it, share this securely instead.`
+    `Admin created: ${email} / ${tempPassword}` +
+      (emailed ? " (also emailed to them)." : " - could not email it, share this securely.")
   );
   res.redirect("/admin/users");
 });
@@ -665,9 +664,8 @@ router.post("/users/:id/reset-password", requireAdmin, requirePermission("manage
 
   req.flash(
     "success",
-    emailed
-      ? `Password reset for ${target.email} - the new password has been emailed to them.`
-      : `Password reset for ${target.email}: ${tempPassword} - could not email it, share this securely instead.`
+    `Password reset for ${target.email}: ${tempPassword}` +
+      (emailed ? " (also emailed to them)." : " - could not email it, share this securely.")
   );
   res.redirect("/admin/users");
 });

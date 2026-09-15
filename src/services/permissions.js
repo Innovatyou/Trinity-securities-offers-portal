@@ -8,23 +8,33 @@
 const ROLES = {
   SUPER_ADMIN: {
     label: "Super Admin",
-    permissions: ["manage_offers", "manage_subscriptions", "manage_admins", "view_executive_dashboard"],
+    permissions: [
+      "manage_offers",
+      "manage_subscriptions",
+      "manage_admins",
+      "view_executive_dashboard",
+      "confirm_payment",
+    ],
   },
   OFFERS_MANAGER: {
     label: "Offers Manager",
     permissions: ["manage_offers"],
   },
+  // Can view/create/edit/delete subscriptions and issue receipts, but not
+  // confirm or reject a payment - that decision is reserved for Finance,
+  // Executive and Super Admin (separation of duties: the person entering/
+  // reviewing subscription data isn't the one who signs off on the money).
   SUBSCRIPTIONS_REVIEWER: {
     label: "Subscriptions Reviewer",
     permissions: ["manage_subscriptions"],
   },
   FINANCE: {
     label: "Finance",
-    permissions: ["manage_subscriptions"],
+    permissions: ["manage_subscriptions", "confirm_payment"],
   },
   EXECUTIVE: {
     label: "Executive",
-    permissions: ["view_executive_dashboard"],
+    permissions: ["view_executive_dashboard", "confirm_payment"],
   },
 };
 

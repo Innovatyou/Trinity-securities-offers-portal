@@ -1,4 +1,6 @@
 <% const canManage = can('manage_subscriptions'); %>
+<% const canConfirm = can('confirm_payment'); %>
+<% const showActionsColumn = canManage || canConfirm; %>
 
 <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
   <div class="flex items-center gap-2 text-sm flex-wrap">
@@ -33,12 +35,12 @@
         <th class="px-4 py-3 font-semibold">Shares</th>
         <th class="px-4 py-3 font-semibold">Amount</th>
         <th class="px-4 py-3 font-semibold">Status</th>
-        <% if (canManage) { %><th class="px-4 py-3 font-semibold"></th><% } %>
+        <% if (showActionsColumn) { %><th class="px-4 py-3 font-semibold"></th><% } %>
       </tr>
     </thead>
     <tbody>
       <% if (!subscriptions.length) { %>
-        <tr><td colspan="<%= canManage ? 8 : 6 %>" class="px-4 py-6 text-center text-navy-400">No subscriptions yet.</td></tr>
+        <tr><td colspan="<%= 6 + (canManage ? 1 : 0) + (showActionsColumn ? 1 : 0) %>" class="px-4 py-6 text-center text-navy-400">No subscriptions yet.</td></tr>
       <% } %>
       <% subscriptions.forEach(function(sub) { %>
         <tr class="border-t border-navy-50">
@@ -58,9 +60,9 @@
               <%= sub.status.replace('_', ' ') %>
             </span>
           </td>
-          <% if (canManage) { %>
+          <% if (showActionsColumn) { %>
           <td class="px-4 py-3 text-right whitespace-nowrap space-x-2">
-            <% if (sub.status === 'PAYMENT_REPORTED') { %>
+            <% if (canConfirm && sub.status === 'PAYMENT_REPORTED') { %>
               <form action="/admin/subscriptions/<%= sub.id %>/confirm" method="POST" class="inline">
                 <button class="font-semibold text-emerald-600 hover:underline">Confirm</button>
               </form>
@@ -68,7 +70,7 @@
                 <button class="font-semibold text-red-600 hover:underline">Reject</button>
               </form>
             <% } %>
-            <% if (sub.status === 'CONFIRMED') { %>
+            <% if (canManage && sub.status === 'CONFIRMED') { %>
               <a href="/admin/subscriptions/<%= sub.id %>/receipt.pdf" class="font-semibold text-navy-700 hover:underline">Download PDF</a>
               <% if (sub.subscriber && sub.subscriber.email) { %>
                 <form action="/admin/subscriptions/<%= sub.id %>/receipt/email" method="POST" class="inline">
@@ -78,10 +80,12 @@
                 <span class="text-navy-300 cursor-not-allowed" title="This investor verified by phone - no email on file">Email Receipt</span>
               <% } %>
             <% } %>
-            <a href="/admin/subscriptions/<%= sub.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
-            <form action="/admin/subscriptions/<%= sub.id %>/delete" method="POST" class="inline" data-delete-one>
-              <button class="font-semibold text-red-600 hover:underline">Delete</button>
-            </form>
+            <% if (canManage) { %>
+              <a href="/admin/subscriptions/<%= sub.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+              <form action="/admin/subscriptions/<%= sub.id %>/delete" method="POST" class="inline" data-delete-one>
+                <button class="font-semibold text-red-600 hover:underline">Delete</button>
+              </form>
+            <% } %>
           </td>
           <% } %>
         </tr>
