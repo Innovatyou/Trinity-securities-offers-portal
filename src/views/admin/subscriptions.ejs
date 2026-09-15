@@ -1,6 +1,7 @@
 <% const canManage = can('manage_subscriptions'); %>
 <% const canConfirm = can('confirm_payment'); %>
-<% const showActionsColumn = canManage || canConfirm; %>
+<% const canEditDelete = can('edit_delete_subscriptions'); %>
+<% const showActionsColumn = canManage || canConfirm || canEditDelete; %>
 
 <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
   <div class="flex items-center gap-2 text-sm flex-wrap">
@@ -9,17 +10,21 @@
       <a href="/admin/subscriptions?status=<%= s %>" class="px-3 py-1.5 rounded-lg <%= statusFilter === s ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>"><%= s.replace('_', ' ') %></a>
     <% }) %>
   </div>
-  <% if (canManage) { %>
+  <% if (canManage || canEditDelete) { %>
   <div class="flex items-center gap-2 flex-wrap">
+    <% if (canEditDelete) { %>
     <button id="batch-delete-btn" type="button" disabled class="text-sm font-semibold border border-red-200 text-red-600 disabled:text-navy-300 disabled:border-navy-100 disabled:cursor-not-allowed px-4 py-2 rounded-lg hover:bg-red-50 disabled:hover:bg-transparent">
       Delete Selected
     </button>
+    <% } %>
+    <% if (canManage) { %>
     <a href="/admin/subscriptions/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Subscription</a>
+    <% } %>
   </div>
   <% } %>
 </div>
 
-<% if (canManage) { %>
+<% if (canEditDelete) { %>
 <form id="batch-delete-form" action="/admin/subscriptions/batch-delete" method="POST" class="hidden"></form>
 <% } %>
 
@@ -28,7 +33,7 @@
   <table class="w-full text-sm">
     <thead class="bg-navy-50 text-navy-500 text-left">
       <tr>
-        <% if (canManage) { %><th class="px-4 py-3 w-8"><input id="select-all-checkbox" type="checkbox" class="h-4 w-4" /></th><% } %>
+        <% if (canEditDelete) { %><th class="px-4 py-3 w-8"><input id="select-all-checkbox" type="checkbox" class="h-4 w-4" /></th><% } %>
         <th class="px-4 py-3 font-semibold">Reference</th>
         <th class="px-4 py-3 font-semibold">Offer</th>
         <th class="px-4 py-3 font-semibold">Subscriber</th>
@@ -40,11 +45,11 @@
     </thead>
     <tbody>
       <% if (!subscriptions.length) { %>
-        <tr><td colspan="<%= 6 + (canManage ? 1 : 0) + (showActionsColumn ? 1 : 0) %>" class="px-4 py-6 text-center text-navy-400">No subscriptions yet.</td></tr>
+        <tr><td colspan="<%= 6 + (canEditDelete ? 1 : 0) + (showActionsColumn ? 1 : 0) %>" class="px-4 py-6 text-center text-navy-400">No subscriptions yet.</td></tr>
       <% } %>
       <% subscriptions.forEach(function(sub) { %>
         <tr class="border-t border-navy-50">
-          <% if (canManage) { %><td class="px-4 py-3"><input type="checkbox" class="sub-checkbox h-4 w-4" value="<%= sub.id %>" /></td><% } %>
+          <% if (canEditDelete) { %><td class="px-4 py-3"><input type="checkbox" class="sub-checkbox h-4 w-4" value="<%= sub.id %>" /></td><% } %>
           <td class="px-4 py-3 font-mono text-xs font-semibold text-navy-800"><%= sub.reference %></td>
           <td class="px-4 py-3"><%= sub.offer.name %></td>
           <td class="px-4 py-3">
@@ -80,7 +85,7 @@
                 <span class="text-navy-300 cursor-not-allowed" title="This investor verified by phone - no email on file">Email Receipt</span>
               <% } %>
             <% } %>
-            <% if (canManage) { %>
+            <% if (canEditDelete) { %>
               <a href="/admin/subscriptions/<%= sub.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
               <form action="/admin/subscriptions/<%= sub.id %>/delete" method="POST" class="inline" data-delete-one>
                 <button class="font-semibold text-red-600 hover:underline">Delete</button>
@@ -94,7 +99,7 @@
   </table>
 </div>
 
-<% if (canManage) { %>
+<% if (canEditDelete) { %>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const selectAll = document.getElementById("select-all-checkbox");

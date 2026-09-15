@@ -341,7 +341,7 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
   res.redirect("/admin/subscriptions");
 });
 
-router.get("/subscriptions/:id/edit", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+router.get("/subscriptions/:id/edit", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {
   const subscription = db.getSubscriptionById(req.params.id);
   if (!subscription) {
     req.flash("error", "Subscription not found.");
@@ -355,7 +355,7 @@ router.get("/subscriptions/:id/edit", requireAdmin, requirePermission("manage_su
   });
 });
 
-router.post("/subscriptions/:id", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+router.post("/subscriptions/:id", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {
   const subscription = db.getSubscriptionById(req.params.id);
   if (!subscription) {
     req.flash("error", "Subscription not found.");
@@ -454,7 +454,7 @@ router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("confir
   res.redirect("/admin/subscriptions");
 });
 
-router.post("/subscriptions/:id/delete", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+router.post("/subscriptions/:id/delete", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {
   const subscription = db.getSubscriptionById(req.params.id);
   if (!subscription) {
     req.flash("error", "Subscription not found.");
@@ -465,7 +465,7 @@ router.post("/subscriptions/:id/delete", requireAdmin, requirePermission("manage
   res.redirect("/admin/subscriptions");
 });
 
-router.post("/subscriptions/batch-delete", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
+router.post("/subscriptions/batch-delete", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {
   const ids = [].concat(req.body.ids || []).filter(Boolean);
   if (!ids.length) {
     req.flash("error", "Select at least one subscription to delete.");
