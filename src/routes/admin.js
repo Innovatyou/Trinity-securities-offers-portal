@@ -257,6 +257,76 @@ router.get("/subscriptions", requireAdmin, (req, res) => {
   });
 });
 
+// BVN/NIN are masked here (and in the CSV export below) even though every
+// role can reach this list - NDPA-sensitive identifiers stay reserved for
+// the Edit form, which only Super Admin can open.
+function maskId(value) {
+  if (!value || value.length < 6) return value || "";
+  return `${value.slice(0, 3)}${"*".repeat(value.length - 5)}${value.slice(-2)}`;
+}
+
+router.get("/subscriptions/export.csv", requireAdmin, (req, res) => {
+  const statusFilter = req.query.status;
+  const subscriptions = db.listSubscriptions({ status: statusFilter || undefined });
+  const columns = [
+    "reference",
+    "status",
+    "offerName",
+    "subscriberName",
+    "bvnMasked",
+    "email",
+    "phone",
+    "trinityAccountId",
+    "isForMinor",
+    "minorName",
+    "minorNinMasked",
+    "numberOfShares",
+    "amount",
+    "currency",
+    "paymentMethod",
+    "referralCode",
+    "consentAcceptedAt",
+    "transferReportedAt",
+    "confirmedAt",
+    "confirmedBy",
+    "createdAt",
+  ];
+  const csvEscape = (value) => `"${String(value === null || value === undefined ? "" : value).replace(/"/g, '""')}"`;
+  const rows = subscriptions.map((sub) => {
+    const row = {
+      reference: sub.reference,
+      status: sub.status,
+      offerName: sub.offer.name,
+      subscriberName: sub.subscriber ? sub.subscriber.fullName : "",
+      bvnMasked: sub.subscriber ? maskId(sub.subscriber.bvn) : "",
+      email: sub.subscriber ? sub.subscriber.email || "" : "",
+      phone: sub.subscriber ? sub.subscriber.phone || "" : "",
+      trinityAccountId: sub.subscriber ? sub.subscriber.trinityAccountId || "" : "",
+      isForMinor: sub.isForMinor ? "Yes" : "No",
+      minorName: sub.minor ? sub.minor.fullName : "",
+      minorNinMasked: sub.minor ? maskId(sub.minor.nin) : "",
+      numberOfShares: sub.numberOfShares,
+      amount: sub.amount,
+      currency: sub.offer.currency,
+      paymentMethod: sub.paymentMethod,
+      referralCode: sub.referralCode,
+      consentAcceptedAt: sub.consentAcceptedAt ? sub.consentAcceptedAt.toISOString() : "",
+      transferReportedAt: sub.transferReportedAt ? sub.transferReportedAt.toISOString() : "",
+      confirmedAt: sub.confirmedAt ? sub.confirmedAt.toISOString() : "",
+      confirmedBy: sub.confirmedBy,
+      createdAt: sub.createdAt.toISOString(),
+    };
+    return columns.map((col) => csvEscape(row[col])).join(",");
+  });
+  const csv = [columns.map(csvEscape).join(","), ...rows].join("\r\n");
+
+  res.set({
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="subscriptions-${new Date().toISOString().slice(0, 10)}.csv"`,
+  });
+  res.send(csv);
+});
+
 router.get("/subscriptions/new", requireAdmin, requirePermission("manage_subscriptions"), (req, res) => {
   res.render("admin/subscription-form", {
     title: "New Subscription",
@@ -339,6 +409,20 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
 
   req.flash("success", `Subscription ${subscription.reference} created for ${fullName}.`);
   res.redirect("/admin/subscriptions");
+});
+
+router.get("/subscriptions/:id", requireAdmin, (req, res) => {
+  const subscription = db.getSubscriptionById(req.params.id);
+  if (!subscription) {
+    req.flash("error", "Subscription not found.");
+    return res.redirect("/admin/subscriptions");
+  }
+  res.render("admin/subscription-detail", {
+    title: "Subscription Details",
+    layout: "admin-layout",
+    subscription,
+    maskId,
+  });
 });
 
 router.get("/subscriptions/:id/edit", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {

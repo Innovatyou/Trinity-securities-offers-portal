@@ -1,0 +1,99 @@
+<% const sub = subscription; %>
+<% const subscriber = sub.subscriber; %>
+<% const canManage = can('manage_subscriptions'); %>
+<% const canConfirm = can('confirm_payment'); %>
+<% const canUnconfirm = can('unconfirm_payment'); %>
+<% const canEditDelete = can('edit_delete_subscriptions'); %>
+
+<a href="/admin/subscriptions" class="inline-flex items-center gap-1 text-sm font-semibold text-navy-600 hover:text-navy-800 mb-4">&larr; Back to Subscriptions</a>
+
+<div class="flex items-start justify-between mb-6 gap-3 flex-wrap">
+  <div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <h2 class="font-mono text-lg font-bold text-navy-800"><%= sub.reference %></h2>
+      <span class="text-xs font-semibold px-2 py-1 rounded-full
+        <%= sub.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : sub.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
+        <%= sub.status.replace('_', ' ') %>
+      </span>
+    </div>
+    <p class="text-sm text-navy-400 mt-1">Created <%= sub.createdAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
+  </div>
+  <div class="flex items-center gap-2 flex-wrap">
+    <% if (canConfirm && sub.status === 'PAYMENT_REPORTED') { %>
+      <form action="/admin/subscriptions/<%= sub.id %>/confirm" method="POST" class="inline">
+        <button class="text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg">Confirm</button>
+      </form>
+      <form action="/admin/subscriptions/<%= sub.id %>/reject" method="POST" class="inline">
+        <button class="text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg">Reject</button>
+      </form>
+    <% } %>
+    <% if (canUnconfirm && sub.status === 'CONFIRMED') { %>
+      <form action="/admin/subscriptions/<%= sub.id %>/unconfirm" method="POST" class="inline" data-unconfirm>
+        <button class="text-sm font-semibold border border-gold-200 text-gold-600 hover:bg-gold-50 px-4 py-2 rounded-lg">Unconfirm</button>
+      </form>
+    <% } %>
+    <% if (canManage && sub.status === 'CONFIRMED') { %>
+      <a href="/admin/subscriptions/<%= sub.id %>/receipt.pdf" class="text-sm font-semibold border border-navy-200 text-navy-700 hover:bg-navy-50 px-4 py-2 rounded-lg">Download Receipt</a>
+      <% if (subscriber && subscriber.email) { %>
+        <form action="/admin/subscriptions/<%= sub.id %>/receipt/email" method="POST" class="inline">
+          <button class="text-sm font-semibold border border-navy-200 text-navy-700 hover:bg-navy-50 px-4 py-2 rounded-lg">Email Receipt</button>
+        </form>
+      <% } %>
+    <% } %>
+    <% if (canEditDelete) { %>
+      <a href="/admin/subscriptions/<%= sub.id %>/edit" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">Edit</a>
+    <% } %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="bg-white rounded-xl border border-navy-100 p-6">
+    <h3 class="font-bold text-navy-800 mb-4">Investor Details</h3>
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Full Name</dt><dd class="font-semibold text-navy-800 text-right"><%= subscriber ? subscriber.fullName : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Email</dt><dd class="font-semibold text-navy-800 text-right"><%= (subscriber && subscriber.email) || '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Phone</dt><dd class="font-semibold text-navy-800 text-right"><%= (subscriber && subscriber.phone) || '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">BVN</dt><dd class="font-mono font-semibold text-navy-800 text-right"><%= subscriber ? maskId(subscriber.bvn) : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Trinity Securities Account ID</dt><dd class="font-semibold text-navy-800 text-right"><%= (subscriber && subscriber.trinityAccountId) || '-' %></dd></div>
+    </dl>
+
+    <% if (sub.isForMinor && sub.minor) { %>
+      <h4 class="text-xs font-bold uppercase tracking-wide text-gold-600 mt-6 mb-3">On behalf of a minor</h4>
+      <dl class="space-y-3 text-sm">
+        <div class="flex justify-between gap-3"><dt class="text-navy-400">Minor Full Name</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.minor.fullName %></dd></div>
+        <div class="flex justify-between gap-3"><dt class="text-navy-400">Minor NIN</dt><dd class="font-mono font-semibold text-navy-800 text-right"><%= maskId(sub.minor.nin) %></dd></div>
+      </dl>
+    <% } %>
+  </div>
+
+  <div class="bg-white rounded-xl border border-navy-100 p-6">
+    <h3 class="font-bold text-navy-800 mb-4">Subscription Details</h3>
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Offer</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.offer.name %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Number of Shares</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.numberOfShares ? sub.numberOfShares.toLocaleString() : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Price per Share</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.offer.currency %><%= sub.offer.pricePerShare.toFixed(2) %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Amount</dt><dd class="font-bold text-navy-800 text-right"><%= sub.amount ? sub.offer.currency + sub.amount.toLocaleString(undefined, {minimumFractionDigits:2}) : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Payment Method</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.paymentMethod ? sub.paymentMethod.replace('_', ' ') : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Referral Code</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.referralCode || '-' %></dd></div>
+    </dl>
+
+    <h4 class="text-xs font-bold uppercase tracking-wide text-navy-400 mt-6 mb-3">Timeline</h4>
+    <dl class="space-y-3 text-sm">
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Consent Accepted</dt><dd class="text-navy-700 text-right"><%= sub.consentAcceptedAt ? sub.consentAcceptedAt.toLocaleString('en-GB') : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Payment Reported</dt><dd class="text-navy-700 text-right"><%= sub.transferReportedAt ? sub.transferReportedAt.toLocaleString('en-GB') : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Confirmed</dt><dd class="text-navy-700 text-right"><%= sub.confirmedAt ? sub.confirmedAt.toLocaleString('en-GB') : '-' %><%= sub.confirmedBy ? ` by ${sub.confirmedBy}` : '' %></dd></div>
+    </dl>
+  </div>
+</div>
+
+<% if (canUnconfirm) { %>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-unconfirm]").forEach(function (form) {
+      form.addEventListener("submit", function (e) {
+        if (!confirm("Unconfirm this subscription? It goes back to the review queue and the investor is notified.")) e.preventDefault();
+      });
+    });
+  });
+</script>
+<% } %>
