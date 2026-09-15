@@ -6,6 +6,10 @@
  */
 
 const ROLES = {
+  // Listed for documentation even though hasPermission() below always grants
+  // Super Admin every permission regardless of this list - that bypass is
+  // the actual guarantee ("Super Admin has all rights"), immune to a future
+  // permission being added here and forgotten for this role.
   SUPER_ADMIN: {
     label: "Super Admin",
     permissions: [
@@ -14,6 +18,7 @@ const ROLES = {
       "manage_admins",
       "view_executive_dashboard",
       "confirm_payment",
+      "unconfirm_payment",
       "edit_delete_subscriptions",
     ],
   },
@@ -32,7 +37,7 @@ const ROLES = {
   },
   FINANCE: {
     label: "Finance",
-    permissions: ["manage_subscriptions", "confirm_payment"],
+    permissions: ["manage_subscriptions", "confirm_payment", "unconfirm_payment"],
   },
   EXECUTIVE: {
     label: "Executive",
@@ -41,6 +46,7 @@ const ROLES = {
 };
 
 function hasPermission(role, permission) {
+  if (role === "SUPER_ADMIN") return true;
   const def = ROLES[role];
   return Boolean(def && def.permissions.includes(permission));
 }

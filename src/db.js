@@ -413,13 +413,18 @@ function updateSubscription(id, data) {
     referral_code: data.referralCode !== undefined ? data.referralCode : current.referral_code,
     payment_method: data.paymentMethod !== undefined ? data.paymentMethod : current.payment_method,
     status: data.status !== undefined ? data.status : current.status,
+    // For all three: undefined -> leave untouched, a Date -> store it, explicit
+    // null -> clear the column (needed to un-set confirmed_at/by on unconfirm).
     consent_accepted_at:
-      data.consentAcceptedAt !== undefined ? data.consentAcceptedAt.toISOString() : current.consent_accepted_at,
+      data.consentAcceptedAt !== undefined
+        ? data.consentAcceptedAt && data.consentAcceptedAt.toISOString()
+        : current.consent_accepted_at,
     transfer_reported_at:
       data.transferReportedAt !== undefined
-        ? data.transferReportedAt.toISOString()
+        ? data.transferReportedAt && data.transferReportedAt.toISOString()
         : current.transfer_reported_at,
-    confirmed_at: data.confirmedAt !== undefined ? data.confirmedAt.toISOString() : current.confirmed_at,
+    confirmed_at:
+      data.confirmedAt !== undefined ? data.confirmedAt && data.confirmedAt.toISOString() : current.confirmed_at,
     confirmed_by: data.confirmedBy !== undefined ? data.confirmedBy : current.confirmed_by,
     updated_at: now(),
   };

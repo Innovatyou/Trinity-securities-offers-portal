@@ -454,6 +454,26 @@ router.post("/subscriptions/:id/reject", requireAdmin, requirePermission("confir
   res.redirect("/admin/subscriptions");
 });
 
+router.post("/subscriptions/:id/unconfirm", requireAdmin, requirePermission("unconfirm_payment"), async (req, res) => {
+  const existing = db.getSubscriptionById(req.params.id);
+  if (!existing || existing.status !== "CONFIRMED") {
+    req.flash("error", "Only a confirmed subscription can be unconfirmed.");
+    return res.redirect("/admin/subscriptions");
+  }
+
+  const subscription = db.updateSubscription(existing.id, {
+    status: "PAYMENT_REPORTED",
+    confirmedAt: null,
+    confirmedBy: null,
+  });
+  await notifySubscriber(subscription, {
+    subject: "Your subscription is being re-reviewed",
+    message: `Your subscription (ref. ${subscription.reference}) for ${subscription.offer.name} has been moved back to review. Our team will follow up with you shortly.`,
+  });
+  req.flash("success", `Subscription ${subscription.reference} unconfirmed - back in the review queue.`);
+  res.redirect("/admin/subscriptions");
+});
+
 router.post("/subscriptions/:id/delete", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {
   const subscription = db.getSubscriptionById(req.params.id);
   if (!subscription) {

@@ -1,7 +1,8 @@
 <% const canManage = can('manage_subscriptions'); %>
 <% const canConfirm = can('confirm_payment'); %>
+<% const canUnconfirm = can('unconfirm_payment'); %>
 <% const canEditDelete = can('edit_delete_subscriptions'); %>
-<% const showActionsColumn = canManage || canConfirm || canEditDelete; %>
+<% const showActionsColumn = canManage || canConfirm || canUnconfirm || canEditDelete; %>
 
 <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
   <div class="flex items-center gap-2 text-sm flex-wrap">
@@ -85,6 +86,11 @@
                 <span class="text-navy-300 cursor-not-allowed" title="This investor verified by phone - no email on file">Email Receipt</span>
               <% } %>
             <% } %>
+            <% if (canUnconfirm && sub.status === 'CONFIRMED') { %>
+              <form action="/admin/subscriptions/<%= sub.id %>/unconfirm" method="POST" class="inline" data-unconfirm>
+                <button class="font-semibold text-gold-600 hover:underline">Unconfirm</button>
+              </form>
+            <% } %>
             <% if (canEditDelete) { %>
               <a href="/admin/subscriptions/<%= sub.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
               <form action="/admin/subscriptions/<%= sub.id %>/delete" method="POST" class="inline" data-delete-one>
@@ -139,6 +145,18 @@
     document.querySelectorAll("[data-delete-one]").forEach(function (form) {
       form.addEventListener("submit", function (e) {
         if (!confirm("Delete this subscription? This cannot be undone.")) e.preventDefault();
+      });
+    });
+  });
+</script>
+<% } %>
+
+<% if (canUnconfirm) { %>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-unconfirm]").forEach(function (form) {
+      form.addEventListener("submit", function (e) {
+        if (!confirm("Unconfirm this subscription? It goes back to the review queue and the investor is notified.")) e.preventDefault();
       });
     });
   });
