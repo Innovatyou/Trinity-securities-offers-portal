@@ -500,6 +500,21 @@ function listSubscriptions({ status } = {}) {
   return rows.map(rowToSubscription).map(attachRelations);
 }
 
+// Mobile app's "my subscriptions" history - identified by the investor's
+// EMSX trinity_account_id rather than a separate app login (see
+// upsertSubscriberByBvn, which stamps this at subscribe time).
+function listSubscriptionsByTrinityAccountId(trinityAccountId) {
+  const rows = db
+    .prepare(
+      `SELECT s.* FROM subscriptions s
+       JOIN subscribers sub ON sub.id = s.subscriber_id
+       WHERE sub.trinity_account_id = ?
+       ORDER BY s.created_at DESC`
+    )
+    .all(trinityAccountId);
+  return rows.map(rowToSubscription).map(attachRelations);
+}
+
 function countSubscriptionsByStatus() {
   const rows = db.prepare(`SELECT status, COUNT(*) as count FROM subscriptions GROUP BY status`).all();
   return Object.fromEntries(rows.map((r) => [r.status, r.count]));
@@ -933,6 +948,7 @@ module.exports = {
   createSubscription,
   updateSubscription,
   listSubscriptions,
+  listSubscriptionsByTrinityAccountId,
   countSubscriptionsByStatus,
   getOfferSummaries,
   deleteSubscription,
