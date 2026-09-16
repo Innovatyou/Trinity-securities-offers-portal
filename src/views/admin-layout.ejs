@@ -30,6 +30,9 @@
         <% if (typeof can === 'function' && can('manage_admins')) { %>
         <a href="/admin/users" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/users') ? 'bg-navy-700 font-semibold' : '' %>">Admin Users</a>
         <% } %>
+        <% if (typeof can === 'function' && can('manage_roles')) { %>
+        <a href="/admin/roles" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/roles') ? 'bg-navy-700 font-semibold' : '' %>">Roles &amp; Permissions</a>
+        <% } %>
         <a href="/" class="block px-3 py-2 rounded-lg hover:bg-navy-700">View Public Portal</a>
       </nav>
       <% if (typeof currentAdmin !== 'undefined' && currentAdmin) { %>

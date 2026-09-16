@@ -1,0 +1,39 @@
+<div class="mb-4">
+  <h2 class="font-bold text-navy-800">Roles &amp; Permissions</h2>
+  <p class="text-sm text-navy-500 mt-1">
+    Choose what each role can do. Changes apply immediately to every admin currently assigned that role.
+  </p>
+</div>
+
+<div class="rounded-xl border border-gold-200 bg-gold-50 text-gold-700 text-sm px-4 py-3 mb-6">
+  <strong>Super Admin</strong> always has every permission and isn't shown here - that guarantee can't be edited away,
+  so there's no way to accidentally lock every admin out of the portal.
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <% Object.keys(rolePermissions).forEach(function(role) { %>
+    <form action="/admin/roles/<%= role %>" method="POST" class="bg-white rounded-xl border border-navy-100 p-5">
+      <div class="flex items-center justify-between mb-4 gap-2">
+        <h3 class="font-bold text-navy-800"><%= roleLabel(role) %></h3>
+        <button class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-1.5 rounded-lg shrink-0">Save</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+        <% permissions.forEach(function(p) { %>
+          <label class="flex items-start gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              name="permissions"
+              value="<%= p.id %>"
+              class="h-4 w-4 mt-0.5 shrink-0"
+              <%= rolePermissions[role].includes(p.id) ? 'checked' : '' %>
+            />
+            <span>
+              <span class="block font-semibold text-navy-800"><%= p.label %></span>
+              <span class="block text-xs text-navy-400"><%= p.description %></span>
+            </span>
+          </label>
+        <% }) %>
+      </div>
+    </form>
+  <% }) %>
+</div>

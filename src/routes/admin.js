@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../db");
 const { requireAdmin, requirePermission } = require("../middleware/adminAuth");
 const { handleAvatarUpload, deleteAvatarFile } = require("../middleware/upload");
-const { roleOptions } = require("../services/permissions");
+const { roleOptions, PERMISSIONS, getRolePermissionsMap, updateRolePermissions } = require("../services/permissions");
 const mailer = require("../services/mailer");
 const receipt = require("../services/receipt");
 const { generateSubscriptionReference } = require("../services/reference");
@@ -1011,6 +1011,37 @@ router.post("/users/:id/reset-password", requireAdmin, requirePermission("manage
       (emailed ? " (also emailed to them)." : " - could not email it, share this securely.")
   );
   res.redirect("/admin/users");
+});
+
+// ---------- Role permissions ----------
+// Gated behind its own "manage_roles" permission (not manage_admins) so
+// granting someone the power to manage admin accounts doesn't also hand
+// them the power to reassign what every role - including their own - can
+// do. Super Admin always has it via hasPermission()'s hardcoded bypass;
+// no other role is granted it by default.
+
+router.get("/roles", requireAdmin, requirePermission("manage_roles"), (req, res) => {
+  res.render("admin/roles", {
+    title: "Roles & Permissions",
+    layout: "admin-layout",
+    permissions: PERMISSIONS,
+    rolePermissions: getRolePermissionsMap(),
+  });
+});
+
+router.post("/roles/:role", requireAdmin, requirePermission("manage_roles"), (req, res) => {
+  const { role } = req.params;
+  if (!Object.prototype.hasOwnProperty.call(getRolePermissionsMap(), role)) {
+    req.flash("error", "Unknown or non-editable role.");
+    return res.redirect("/admin/roles");
+  }
+
+  const submitted = req.body.permissions;
+  const selected = Array.isArray(submitted) ? submitted : submitted ? [submitted] : [];
+
+  updateRolePermissions(role, selected);
+  req.flash("success", `Permissions updated for ${role.replace(/_/g, " ").toLowerCase()}.`);
+  res.redirect("/admin/roles");
 });
 
 module.exports = router;

@@ -143,6 +143,12 @@ db.exec(`
     created_at TEXT NOT NULL,
     last_seen_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS role_permissions (
+    role TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    PRIMARY KEY (role, permission)
+  );
 `);
 
 // Migrate admin_users for databases created before role/status existed
@@ -642,6 +648,54 @@ function countActiveAdminsByRole(role) {
     .get(role).count;
 }
 
+// ---------- Role permissions (editable via /admin/roles) ----------
+// SUPER_ADMIN is deliberately never stored here - permissions.js hardcodes
+// that role to always pass hasPermission(), so a row for it would be
+// misleading (editing it would have no real effect).
+
+function countRolePermissionRows() {
+  return db.prepare(`SELECT COUNT(*) as count FROM role_permissions`).get().count;
+}
+
+function getAllRolePermissions() {
+  const rows = db.prepare(`SELECT role, permission FROM role_permissions`).all();
+  const map = {};
+  for (const { role, permission } of rows) {
+    if (!map[role]) map[role] = [];
+    map[role].push(permission);
+  }
+  return map;
+}
+
+function setRolePermissions(role, permissions) {
+  const del = db.prepare(`DELETE FROM role_permissions WHERE role = ?`);
+  const insert = db.prepare(`INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?, ?)`);
+  db.transaction(() => {
+    del.run(role);
+    for (const permission of permissions) {
+      insert.run(role, permission);
+    }
+  })();
+}
+
+// One-time seed so DB-backed permissions start out identical to the
+// hardcoded defaults - only runs when the table has never been written to,
+// so it never clobbers an admin's later edits (including a deliberate
+// "remove every permission from this role").
+function seedRolePermissionsIfEmpty(defaults) {
+  if (countRolePermissionRows() > 0) return;
+  db.transaction(() => {
+    for (const [role, permissions] of Object.entries(defaults)) {
+      for (const permission of permissions) {
+        db.prepare(`INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?, ?)`).run(
+          role,
+          permission
+        );
+      }
+    }
+  })();
+}
+
 function createAdminUser({ name, email, passwordHash, role }) {
   const id = genId();
   db.prepare(
@@ -1000,6 +1054,9 @@ module.exports = {
   getAdminById,
   listAdminUsers,
   countActiveAdminsByRole,
+  getAllRolePermissions,
+  setRolePermissions,
+  seedRolePermissionsIfEmpty,
   createAdminUser,
   updateAdminUser,
   updateAdminPassword,
