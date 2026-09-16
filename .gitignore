@@ -6,5 +6,6 @@ dev.db-shm
 dev.db-wal
 src/public/css/tailwind.css
 src/public/uploads/
+sessions/
 npm-debug.log*
 .DS_Store

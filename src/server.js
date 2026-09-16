@@ -2,6 +2,7 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const session = require("express-session");
+const FileStore = require("session-file-store")(session);
 const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
 
@@ -21,12 +22,24 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+const SESSION_MAX_AGE = 1000 * 60 * 60 * 2; // 2 hours
+
+// express-session defaults to an in-memory store, which is wiped on every
+// process restart (every deploy, since we `pm2 restart` after each pull) -
+// that was logging every admin out regardless of the cookie's maxAge. Persist
+// sessions to disk instead so a restart doesn't end anyone's session early.
 app.use(
   session({
+    store: new FileStore({
+      path: path.join(__dirname, "..", "sessions"),
+      ttl: SESSION_MAX_AGE / 1000,
+      logFn: () => {}, // library logs every reap sweep to console by default - too noisy for pm2 logs
+    }),
     secret: process.env.SESSION_SECRET || "dev-secret-change-me",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 2 }, // 2 hours
+    rolling: true, // refresh the 2-hour window on activity instead of hard-expiring from login time
+    cookie: { maxAge: SESSION_MAX_AGE },
   })
 );
 app.use(flash());
