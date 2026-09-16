@@ -4,6 +4,8 @@
 <% const canConfirm = can('confirm_payment'); %>
 <% const canUnconfirm = can('unconfirm_payment'); %>
 <% const canEditDelete = can('edit_delete_subscriptions'); %>
+<% const canAllot = can('manage_allotment'); %>
+<% const isAllotted = sub.allottedShares !== null && sub.allottedShares !== undefined; %>
 
 <a href="/admin/subscriptions" class="inline-flex items-center gap-1 text-sm font-semibold text-navy-600 hover:text-navy-800 mb-4">&larr; Back to Subscriptions</a>
 
@@ -15,6 +17,11 @@
         <%= sub.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : sub.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
         <%= sub.status.replace('_', ' ') %>
       </span>
+      <% if (sub.status === 'CONFIRMED') { %>
+        <span class="text-xs font-semibold px-2 py-1 rounded-full <%= isAllotted ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
+          <%= isAllotted ? 'ALLOTTED' : 'UNALLOTTED' %>
+        </span>
+      <% } %>
     </div>
     <p class="text-sm text-navy-400 mt-1">Created <%= sub.createdAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
   </div>
@@ -86,12 +93,48 @@
   </div>
 </div>
 
-<% if (canUnconfirm) { %>
+<% if (sub.status === 'CONFIRMED') { %>
+<div class="bg-white rounded-xl border border-navy-100 p-6 mt-5">
+  <h3 class="font-bold text-navy-800 mb-4">Allotment</h3>
+  <% if (isAllotted) { %>
+    <dl class="space-y-3 text-sm mb-4">
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Shares Requested</dt><dd class="font-semibold text-navy-800 text-right"><%= sub.numberOfShares.toLocaleString() %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Shares Allotted</dt><dd class="font-bold text-emerald-700 text-right"><%= sub.allottedShares.toLocaleString() %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Allotted On</dt><dd class="text-navy-700 text-right"><%= sub.allottedAt.toLocaleString('en-GB') %></dd></div>
+    </dl>
+    <% if (canAllot) { %>
+      <form action="/admin/subscriptions/<%= sub.id %>/unallot" method="POST" data-unallot>
+        <button class="text-sm font-semibold border border-gold-200 text-gold-600 hover:bg-gold-50 px-4 py-2 rounded-lg">Undo Allotment</button>
+      </form>
+    <% } %>
+  <% } else { %>
+    <p class="text-sm text-navy-400 mb-4">Not yet allotted. This investor requested <strong><%= sub.numberOfShares.toLocaleString() %> shares</strong>.</p>
+    <% if (canAllot) { %>
+      <form action="/admin/subscriptions/<%= sub.id %>/allot" method="POST" class="flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-sm font-semibold text-navy-700 mb-1">Shares to allot</label>
+          <input name="allottedShares" type="number" min="0" max="<%= sub.numberOfShares %>" value="<%= sub.numberOfShares %>"
+            class="w-40 rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+        </div>
+        <button class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2.5 rounded-lg">Allot Shares</button>
+      </form>
+      <p class="text-xs text-navy-400 mt-2">Defaults to the full requested amount - reduce it if this offer was oversubscribed and shares were pro-rated.</p>
+    <% } %>
+  <% } %>
+</div>
+<% } %>
+
+<% if (canUnconfirm || canAllot) { %>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-unconfirm]").forEach(function (form) {
       form.addEventListener("submit", function (e) {
         if (!confirm("Unconfirm this subscription? It goes back to the review queue and the investor is notified.")) e.preventDefault();
+      });
+    });
+    document.querySelectorAll("[data-unallot]").forEach(function (form) {
+      form.addEventListener("submit", function (e) {
+        if (!confirm("Undo this allotment? The investor will show as unallotted again.")) e.preventDefault();
       });
     });
   });

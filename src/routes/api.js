@@ -141,6 +141,8 @@ function subscriptionToPublicJson(sub) {
     consentAcceptedAt: sub.consentAcceptedAt,
     transferReportedAt: sub.transferReportedAt,
     confirmedAt: sub.confirmedAt,
+    allottedShares: sub.allottedShares ?? null,
+    allottedAt: sub.allottedAt,
     bank: sub.status === "AWAITING_PAYMENT" ? bankDetails() : null,
   };
 }

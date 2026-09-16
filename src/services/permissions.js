@@ -24,6 +24,7 @@ const ROLES = {
       "manage_recommendations",
       "manage_adverts",
       "send_adverts",
+      "manage_allotment",
     ],
   },
   OFFERS_MANAGER: {
@@ -53,7 +54,7 @@ const ROLES = {
   },
   EXECUTIVE: {
     label: "Executive",
-    permissions: ["view_executive_dashboard", "confirm_payment"],
+    permissions: ["view_executive_dashboard", "confirm_payment", "manage_allotment"],
   },
 };
 

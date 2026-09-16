@@ -739,6 +739,10 @@ router.post("/subscriptions/:id/unconfirm", requireAdmin, requirePermission("unc
     status: "PAYMENT_REPORTED",
     confirmedAt: null,
     confirmedBy: null,
+    // An unconfirmed subscription can't stay "allotted" - clear it too, in
+    // the rare case it was allotted before someone caught a reason to unconfirm.
+    allottedShares: null,
+    allottedAt: null,
   });
   await notifySubscriber(subscription, {
     subject: "Your subscription is being re-reviewed",
@@ -746,6 +750,51 @@ router.post("/subscriptions/:id/unconfirm", requireAdmin, requirePermission("unc
   });
   req.flash("success", `Subscription ${subscription.reference} unconfirmed - back in the review queue.`);
   res.redirect("/admin/subscriptions");
+});
+
+// Allotment is a separate fact from CONFIRMED, entered once the registrar/
+// company has finalised how many shares each investor actually receives
+// (which can be less than requested if the offer is oversubscribed) - not
+// something InfoWARE/EMSX is involved in, since it's tracked here, not on
+// the trading platform.
+router.post("/subscriptions/:id/allot", requireAdmin, requirePermission("manage_allotment"), async (req, res) => {
+  const existing = db.getSubscriptionById(req.params.id);
+  if (!existing || existing.status !== "CONFIRMED") {
+    req.flash("error", "Only a confirmed subscription can be allotted.");
+    return res.redirect("/admin/subscriptions");
+  }
+
+  const allottedShares = req.body.allottedShares
+    ? parseInt(req.body.allottedShares, 10)
+    : existing.numberOfShares;
+  if (!Number.isInteger(allottedShares) || allottedShares < 0 || allottedShares > existing.numberOfShares) {
+    req.flash("error", `Allotted shares must be a whole number between 0 and ${existing.numberOfShares}.`);
+    return res.redirect(`/admin/subscriptions/${existing.id}`);
+  }
+
+  const subscription = db.updateSubscription(existing.id, {
+    allottedShares,
+    allottedAt: new Date(),
+  });
+  await notifySubscriber(subscription, {
+    subject: "Shares allotted - Trinity Securities",
+    message:
+      allottedShares === existing.numberOfShares
+        ? `${allottedShares.toLocaleString()} shares have been allotted to you in ${subscription.offer.name} (ref. ${subscription.reference}), in full.`
+        : `${allottedShares.toLocaleString()} shares have been allotted to you in ${subscription.offer.name} (ref. ${subscription.reference}) - ${subscription.offer.name} was oversubscribed, so this is less than the ${existing.numberOfShares.toLocaleString()} shares you requested.`,
+  });
+  req.flash("success", `${allottedShares.toLocaleString()} shares allotted for ${subscription.reference}.`);
+  res.redirect(`/admin/subscriptions/${existing.id}`);
+});
+
+router.post("/subscriptions/:id/unallot", requireAdmin, requirePermission("manage_allotment"), (req, res) => {
+  const subscription = db.updateSubscription(req.params.id, { allottedShares: null, allottedAt: null });
+  if (!subscription) {
+    req.flash("error", "Subscription not found.");
+    return res.redirect("/admin/subscriptions");
+  }
+  req.flash("success", `Allotment cleared for ${subscription.reference}.`);
+  res.redirect(`/admin/subscriptions/${subscription.id}`);
 });
 
 router.post("/subscriptions/:id/delete", requireAdmin, requirePermission("edit_delete_subscriptions"), (req, res) => {

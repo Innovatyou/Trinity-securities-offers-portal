@@ -64,6 +64,11 @@
               <%= sub.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : sub.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
               <%= sub.status.replace('_', ' ') %>
             </span>
+            <% if (sub.status === 'CONFIRMED') { %>
+              <span class="block text-[11px] mt-1 <%= (sub.allottedShares !== null && sub.allottedShares !== undefined) ? 'text-emerald-600 font-semibold' : 'text-navy-300' %>">
+                <%= (sub.allottedShares !== null && sub.allottedShares !== undefined) ? `Allotted ${sub.allottedShares.toLocaleString()}` : 'Unallotted' %>
+              </span>
+            <% } %>
           </td>
           <% if (showActionsColumn) { %>
           <td class="px-4 py-3 text-right whitespace-nowrap space-x-2">

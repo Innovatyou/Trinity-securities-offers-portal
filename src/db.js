@@ -170,6 +170,18 @@ if (!subscriberColumns.includes("trinity_account_id")) {
   db.exec(`ALTER TABLE subscribers ADD COLUMN trinity_account_id TEXT`);
 }
 
+// Migrate subscriptions for databases created before share allotment tracking
+// existed. Allotment is a separate fact from CONFIRMED (payment verified) -
+// a confirmed subscriber's requested shares may be reduced on allotment if
+// the offer is oversubscribed, so this is never inferred from numberOfShares.
+const subscriptionColumns = db.prepare(`PRAGMA table_info(subscriptions)`).all().map((c) => c.name);
+if (!subscriptionColumns.includes("allotted_shares")) {
+  db.exec(`ALTER TABLE subscriptions ADD COLUMN allotted_shares INTEGER`);
+}
+if (!subscriptionColumns.includes("allotted_at")) {
+  db.exec(`ALTER TABLE subscriptions ADD COLUMN allotted_at TEXT`);
+}
+
 function genId() {
   return crypto.randomUUID();
 }
@@ -249,6 +261,8 @@ function rowToSubscription(row) {
     transferReportedAt: row.transfer_reported_at ? new Date(row.transfer_reported_at) : null,
     confirmedAt: row.confirmed_at ? new Date(row.confirmed_at) : null,
     confirmedBy: row.confirmed_by,
+    allottedShares: row.allotted_shares,
+    allottedAt: row.allotted_at ? new Date(row.allotted_at) : null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     // populated by attachRelations()
@@ -477,6 +491,10 @@ function updateSubscription(id, data) {
     confirmed_at:
       data.confirmedAt !== undefined ? data.confirmedAt && data.confirmedAt.toISOString() : current.confirmed_at,
     confirmed_by: data.confirmedBy !== undefined ? data.confirmedBy : current.confirmed_by,
+    allotted_shares:
+      data.allottedShares !== undefined ? data.allottedShares : current.allotted_shares,
+    allotted_at:
+      data.allottedAt !== undefined ? data.allottedAt && data.allottedAt.toISOString() : current.allotted_at,
     updated_at: now(),
   };
 
@@ -486,7 +504,8 @@ function updateSubscription(id, data) {
       number_of_shares = @number_of_shares, amount = @amount, referral_code = @referral_code,
       payment_method = @payment_method,
       status = @status, consent_accepted_at = @consent_accepted_at, transfer_reported_at = @transfer_reported_at,
-      confirmed_at = @confirmed_at, confirmed_by = @confirmed_by, updated_at = @updated_at
+      confirmed_at = @confirmed_at, confirmed_by = @confirmed_by,
+      allotted_shares = @allotted_shares, allotted_at = @allotted_at, updated_at = @updated_at
      WHERE id = @id`
   ).run({ ...merged, id });
 
