@@ -534,6 +534,29 @@ function listSubscriptionsByTrinityAccountId(trinityAccountId) {
   return rows.map(rowToSubscription).map(attachRelations);
 }
 
+// Duplicate-application guard for the public flow (see subscribe.js's
+// POST /account and api.js's POST /offers/:offerId/subscribe) - an investor
+// already mid-flow/confirmed/awaiting payment on this exact offer shouldn't
+// be able to start a second one. REJECTED doesn't count (a rejected
+// application should be free to retry). excludeSubscriptionId is optional:
+// the web flow passes the in-progress row's own id to exclude it (it already
+// exists before this check runs); the mobile API has no row yet at this
+// point, so it omits it and nothing is excluded.
+function findOtherActiveSubscriptionForBvnAndOffer(bvn, offerId, excludeSubscriptionId) {
+  const excludeId = excludeSubscriptionId || null;
+  const row = db
+    .prepare(
+      `SELECT s.* FROM subscriptions s
+       JOIN subscribers sub ON sub.id = s.subscriber_id
+       WHERE sub.bvn = ? AND s.offer_id = ? AND s.status != 'REJECTED'
+         AND (? IS NULL OR s.id != ?)
+       ORDER BY s.created_at DESC
+       LIMIT 1`
+    )
+    .get(bvn, offerId, excludeId, excludeId);
+  return attachRelations(rowToSubscription(row));
+}
+
 function countSubscriptionsByStatus() {
   const rows = db.prepare(`SELECT status, COUNT(*) as count FROM subscriptions GROUP BY status`).all();
   return Object.fromEntries(rows.map((r) => [r.status, r.count]));
@@ -968,6 +991,7 @@ module.exports = {
   updateSubscription,
   listSubscriptions,
   listSubscriptionsByTrinityAccountId,
+  findOtherActiveSubscriptionForBvnAndOffer,
   countSubscriptionsByStatus,
   getOfferSummaries,
   deleteSubscription,

@@ -1,9 +1,13 @@
 <div class="text-center py-6">
   <div class="h-16 w-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-6">&#10003;</div>
   <h2 class="text-xl font-bold text-navy-800 mb-2">Subscription Received</h2>
-  <p class="text-sm text-navy-500 max-w-sm mx-auto mb-6">
+  <p class="text-sm text-navy-500 max-w-sm mx-auto mb-2">
     Thank you for subscribing to <strong><%= offer.name %></strong>. Our back office will confirm your payment against
     reference <strong class="font-mono"><%= subscription.reference %></strong> and your allotment status will be updated shortly.
+  </p>
+  <p class="text-xs text-navy-400 max-w-sm mx-auto mb-6">
+    Your application has been received - there's no need to submit another one for this offer. A confirmation has
+    also been sent to your email/phone on file.
   </p>
 
   <div class="rounded-xl border border-navy-100 p-5 text-left max-w-sm mx-auto mb-8 text-sm">

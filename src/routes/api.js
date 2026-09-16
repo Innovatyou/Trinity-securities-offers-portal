@@ -178,6 +178,19 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
     return res.status(400).json({ error: bvnResult.message || "BVN verification failed." });
   }
 
+  // Same one-application-per-offer guard as the web flow (see subscribe.js's
+  // POST /account) - the app collects everything in one call, so this is the
+  // earliest point identity is known here too.
+  const duplicate = db.findOtherActiveSubscriptionForBvnAndOffer((bvn || "").trim(), offer.id);
+  if (duplicate) {
+    return res.status(400).json({
+      error:
+        `You already have an application for ${offer.name} (ref. ${duplicate.reference}, status: ` +
+        `${duplicate.status.replace("_", " ").toLowerCase()}). Only one application per offer is allowed - ` +
+        `please wait for that one to be processed.`,
+    });
+  }
+
   let minorId = null;
   if (isForMinor) {
     const ninResult = await verifyNIN((minorNin || "").trim());
@@ -253,7 +266,8 @@ router.post("/subscriptions/:id/report-payment", async (req, res) => {
     subject: "We've received your payment report",
     message:
       `We've received your payment report for subscription (ref. ${updated.reference}) in ${subscription.offer.name}. ` +
-      `Our team will verify the transfer and confirm shortly.`,
+      `Our team will verify the transfer and confirm shortly. Your application has been received - please do not ` +
+      `submit another application for this offer; only one is allowed per investor.`,
   });
 
   const adminUrl = `${req.protocol}://${req.get("host")}/admin/subscriptions`;

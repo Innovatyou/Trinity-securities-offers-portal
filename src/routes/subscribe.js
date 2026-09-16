@@ -80,6 +80,23 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
   }
 
+  // One application per offer per investor - a rejected one doesn't count,
+  // everything else (in progress, awaiting payment, reported, confirmed) does.
+  const duplicate = db.findOtherActiveSubscriptionForBvnAndOffer(
+    verifiedBvn.value,
+    req.params.offerId,
+    subscription.id
+  );
+  if (duplicate) {
+    req.flash(
+      "error",
+      `You already have an application for ${subscription.offer.name} (ref. ${duplicate.reference}, status: ` +
+        `${duplicate.status.replace("_", " ").toLowerCase()}). Only one application per offer is allowed - ` +
+        `please wait for that one to be processed.`
+    );
+    return res.redirect(`/offers/${req.params.offerId}`);
+  }
+
   let minorId = null;
   if (isForMinor) {
     const nin = (req.body.nin || "").trim();
@@ -206,7 +223,8 @@ router.post(
       subject: "We've received your payment report",
       message:
         `We've received your payment report for subscription (ref. ${updated.reference}) in ${subscription.offer.name}. ` +
-        `Our team will verify the transfer and confirm shortly.`,
+        `Our team will verify the transfer and confirm shortly. Your application has been received - please do not ` +
+        `submit another application for this offer; only one is allowed per investor.`,
     });
 
     const adminUrl = `${req.protocol}://${req.get("host")}/admin/subscriptions`;
