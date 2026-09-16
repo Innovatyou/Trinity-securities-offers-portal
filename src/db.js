@@ -92,6 +92,57 @@ db.exec(`
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS news_articles (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'NEWS',
+    summary TEXT,
+    body TEXT,
+    image_url TEXT,
+    author TEXT,
+    status TEXT NOT NULL DEFAULT 'DRAFT',
+    published_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS stock_recommendations (
+    id TEXT PRIMARY KEY,
+    stock_code TEXT NOT NULL,
+    stock_name TEXT,
+    rating TEXT NOT NULL DEFAULT 'HOLD',
+    target_price REAL,
+    rationale TEXT,
+    analyst TEXT,
+    status TEXT NOT NULL DEFAULT 'DRAFT',
+    published_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS adverts (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    message TEXT,
+    image_url TEXT,
+    link_url TEXT,
+    placement TEXT NOT NULL DEFAULT 'BANNER',
+    status TEXT NOT NULL DEFAULT 'DRAFT',
+    starts_at TEXT,
+    ends_at TEXT,
+    sent_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS device_tokens (
+    id TEXT PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
+    platform TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+  );
 `);
 
 // Migrate admin_users for databases created before role/status existed
@@ -564,6 +615,304 @@ function updateAdminProfile(id, { name, email, avatarUrl }) {
   return getAdminById(id);
 }
 
+// ---------------------------------------------------------------------
+// News & Analysis
+// ---------------------------------------------------------------------
+
+function rowToNews(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    summary: row.summary,
+    body: row.body,
+    imageUrl: row.image_url,
+    author: row.author,
+    status: row.status,
+    publishedAt: row.published_at ? new Date(row.published_at) : null,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+function listNews({ statuses } = {}) {
+  let rows;
+  if (statuses && statuses.length) {
+    const placeholders = statuses.map(() => "?").join(",");
+    rows = db
+      .prepare(`SELECT * FROM news_articles WHERE status IN (${placeholders}) ORDER BY published_at DESC, created_at DESC`)
+      .all(...statuses);
+  } else {
+    rows = db.prepare(`SELECT * FROM news_articles ORDER BY created_at DESC`).all();
+  }
+  return rows.map(rowToNews);
+}
+
+function getNewsById(id) {
+  return rowToNews(db.prepare(`SELECT * FROM news_articles WHERE id = ?`).get(id));
+}
+
+function createNews(data) {
+  const id = genId();
+  const ts = now();
+  db.prepare(
+    `INSERT INTO news_articles (id, title, category, summary, body, image_url, author, status, published_at, created_at, updated_at)
+     VALUES (@id, @title, @category, @summary, @body, @imageUrl, @author, @status, @publishedAt, @createdAt, @updatedAt)`
+  ).run({
+    id,
+    title: data.title,
+    category: data.category || "NEWS",
+    summary: data.summary || null,
+    body: data.body || null,
+    imageUrl: data.imageUrl || null,
+    author: data.author || null,
+    status: data.status || "DRAFT",
+    publishedAt: data.status === "PUBLISHED" ? now() : null,
+    createdAt: ts,
+    updatedAt: ts,
+  });
+  return getNewsById(id);
+}
+
+function updateNews(id, data) {
+  const existing = getNewsById(id);
+  db.prepare(
+    `UPDATE news_articles SET
+      title = @title, category = @category, summary = @summary, body = @body, image_url = @imageUrl,
+      author = @author, status = @status, published_at = @publishedAt, updated_at = @updatedAt
+     WHERE id = @id`
+  ).run({
+    id,
+    title: data.title,
+    category: data.category || "NEWS",
+    summary: data.summary || null,
+    body: data.body || null,
+    imageUrl: data.imageUrl || null,
+    author: data.author || null,
+    status: data.status || "DRAFT",
+    // Stamp publishedAt the moment it first goes PUBLISHED; keep it stable after that.
+    publishedAt: data.status === "PUBLISHED" ? existing.publishedAt || now() : existing.publishedAt,
+    updatedAt: now(),
+  });
+  return getNewsById(id);
+}
+
+function deleteNews(id) {
+  db.prepare(`DELETE FROM news_articles WHERE id = ?`).run(id);
+}
+
+// ---------------------------------------------------------------------
+// Stock Recommendations
+// ---------------------------------------------------------------------
+
+function rowToRecommendation(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    stockCode: row.stock_code,
+    stockName: row.stock_name,
+    rating: row.rating,
+    targetPrice: row.target_price,
+    rationale: row.rationale,
+    analyst: row.analyst,
+    status: row.status,
+    publishedAt: row.published_at ? new Date(row.published_at) : null,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+function listRecommendations({ statuses } = {}) {
+  let rows;
+  if (statuses && statuses.length) {
+    const placeholders = statuses.map(() => "?").join(",");
+    rows = db
+      .prepare(`SELECT * FROM stock_recommendations WHERE status IN (${placeholders}) ORDER BY published_at DESC, created_at DESC`)
+      .all(...statuses);
+  } else {
+    rows = db.prepare(`SELECT * FROM stock_recommendations ORDER BY created_at DESC`).all();
+  }
+  return rows.map(rowToRecommendation);
+}
+
+function getRecommendationById(id) {
+  return rowToRecommendation(db.prepare(`SELECT * FROM stock_recommendations WHERE id = ?`).get(id));
+}
+
+function createRecommendation(data) {
+  const id = genId();
+  const ts = now();
+  db.prepare(
+    `INSERT INTO stock_recommendations (id, stock_code, stock_name, rating, target_price, rationale, analyst, status, published_at, created_at, updated_at)
+     VALUES (@id, @stockCode, @stockName, @rating, @targetPrice, @rationale, @analyst, @status, @publishedAt, @createdAt, @updatedAt)`
+  ).run({
+    id,
+    stockCode: data.stockCode,
+    stockName: data.stockName || null,
+    rating: data.rating || "HOLD",
+    targetPrice: data.targetPrice || null,
+    rationale: data.rationale || null,
+    analyst: data.analyst || null,
+    status: data.status || "DRAFT",
+    publishedAt: data.status === "PUBLISHED" ? now() : null,
+    createdAt: ts,
+    updatedAt: ts,
+  });
+  return getRecommendationById(id);
+}
+
+function updateRecommendation(id, data) {
+  const existing = getRecommendationById(id);
+  db.prepare(
+    `UPDATE stock_recommendations SET
+      stock_code = @stockCode, stock_name = @stockName, rating = @rating, target_price = @targetPrice,
+      rationale = @rationale, analyst = @analyst, status = @status, published_at = @publishedAt, updated_at = @updatedAt
+     WHERE id = @id`
+  ).run({
+    id,
+    stockCode: data.stockCode,
+    stockName: data.stockName || null,
+    rating: data.rating || "HOLD",
+    targetPrice: data.targetPrice || null,
+    rationale: data.rationale || null,
+    analyst: data.analyst || null,
+    status: data.status || "DRAFT",
+    publishedAt: data.status === "PUBLISHED" ? existing.publishedAt || now() : existing.publishedAt,
+    updatedAt: now(),
+  });
+  return getRecommendationById(id);
+}
+
+function deleteRecommendation(id) {
+  db.prepare(`DELETE FROM stock_recommendations WHERE id = ?`).run(id);
+}
+
+// ---------------------------------------------------------------------
+// Adverts (in-app banners + push notifications)
+// ---------------------------------------------------------------------
+
+function rowToAdvert(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    message: row.message,
+    imageUrl: row.image_url,
+    linkUrl: row.link_url,
+    placement: row.placement,
+    status: row.status,
+    startsAt: row.starts_at ? new Date(row.starts_at) : null,
+    endsAt: row.ends_at ? new Date(row.ends_at) : null,
+    sentAt: row.sent_at ? new Date(row.sent_at) : null,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+function listAdverts({ statuses, placements } = {}) {
+  const clauses = [];
+  const params = [];
+  if (statuses && statuses.length) {
+    clauses.push(`status IN (${statuses.map(() => "?").join(",")})`);
+    params.push(...statuses);
+  }
+  if (placements && placements.length) {
+    clauses.push(`placement IN (${placements.map(() => "?").join(",")})`);
+    params.push(...placements);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = db.prepare(`SELECT * FROM adverts ${where} ORDER BY created_at DESC`).all(...params);
+  return rows.map(rowToAdvert);
+}
+
+function getAdvertById(id) {
+  return rowToAdvert(db.prepare(`SELECT * FROM adverts WHERE id = ?`).get(id));
+}
+
+function createAdvert(data) {
+  const id = genId();
+  const ts = now();
+  db.prepare(
+    `INSERT INTO adverts (id, title, message, image_url, link_url, placement, status, starts_at, ends_at, created_at, updated_at)
+     VALUES (@id, @title, @message, @imageUrl, @linkUrl, @placement, @status, @startsAt, @endsAt, @createdAt, @updatedAt)`
+  ).run({
+    id,
+    title: data.title,
+    message: data.message || null,
+    imageUrl: data.imageUrl || null,
+    linkUrl: data.linkUrl || null,
+    placement: data.placement || "BANNER",
+    status: data.status || "DRAFT",
+    startsAt: data.startsAt ? data.startsAt.toISOString() : null,
+    endsAt: data.endsAt ? data.endsAt.toISOString() : null,
+    createdAt: ts,
+    updatedAt: ts,
+  });
+  return getAdvertById(id);
+}
+
+function updateAdvert(id, data) {
+  db.prepare(
+    `UPDATE adverts SET
+      title = @title, message = @message, image_url = @imageUrl, link_url = @linkUrl,
+      placement = @placement, status = @status, starts_at = @startsAt, ends_at = @endsAt, updated_at = @updatedAt
+     WHERE id = @id`
+  ).run({
+    id,
+    title: data.title,
+    message: data.message || null,
+    imageUrl: data.imageUrl || null,
+    linkUrl: data.linkUrl || null,
+    placement: data.placement || "BANNER",
+    status: data.status || "DRAFT",
+    startsAt: data.startsAt ? data.startsAt.toISOString() : null,
+    endsAt: data.endsAt ? data.endsAt.toISOString() : null,
+    updatedAt: now(),
+  });
+  return getAdvertById(id);
+}
+
+function updateAdvertStatus(id, status) {
+  db.prepare(`UPDATE adverts SET status = ?, updated_at = ? WHERE id = ?`).run(status, now(), id);
+  return getAdvertById(id);
+}
+
+function markAdvertSent(id) {
+  db.prepare(`UPDATE adverts SET sent_at = ?, updated_at = ? WHERE id = ?`).run(now(), now(), id);
+  return getAdvertById(id);
+}
+
+function deleteAdvert(id) {
+  db.prepare(`DELETE FROM adverts WHERE id = ?`).run(id);
+}
+
+// ---------------------------------------------------------------------
+// Device tokens (for push notifications)
+// ---------------------------------------------------------------------
+
+function upsertDeviceToken({ token, platform }) {
+  const existing = db.prepare(`SELECT id FROM device_tokens WHERE token = ?`).get(token);
+  const ts = now();
+  if (existing) {
+    db.prepare(`UPDATE device_tokens SET platform = ?, last_seen_at = ? WHERE id = ?`).run(platform, ts, existing.id);
+    return existing.id;
+  }
+  const id = genId();
+  db.prepare(
+    `INSERT INTO device_tokens (id, token, platform, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)`
+  ).run(id, token, platform, ts, ts);
+  return id;
+}
+
+function deleteDeviceToken(token) {
+  db.prepare(`DELETE FROM device_tokens WHERE token = ?`).run(token);
+}
+
+function listDeviceTokens() {
+  return db.prepare(`SELECT token, platform FROM device_tokens`).all();
+}
+
 module.exports = {
   raw: db,
   listOffers,
@@ -596,4 +945,24 @@ module.exports = {
   updateAdminUser,
   updateAdminPassword,
   updateAdminProfile,
+  listNews,
+  getNewsById,
+  createNews,
+  updateNews,
+  deleteNews,
+  listRecommendations,
+  getRecommendationById,
+  createRecommendation,
+  updateRecommendation,
+  deleteRecommendation,
+  listAdverts,
+  getAdvertById,
+  createAdvert,
+  updateAdvert,
+  updateAdvertStatus,
+  markAdvertSent,
+  deleteAdvert,
+  upsertDeviceToken,
+  deleteDeviceToken,
+  listDeviceTokens,
 };

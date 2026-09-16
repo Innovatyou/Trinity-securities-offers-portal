@@ -1,0 +1,52 @@
+<div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+  <h2 class="font-bold text-navy-800">Stock Recommendations</h2>
+  <% if (can('manage_recommendations')) { %>
+  <a href="/admin/recommendations/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Recommendation</a>
+  <% } %>
+</div>
+
+<p class="sm:hidden text-xs text-navy-400 mb-1">Swipe table to see more &rarr;</p>
+<div class="bg-white rounded-xl border border-navy-100 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Stock</th>
+        <th class="px-4 py-3 font-semibold">Rating</th>
+        <th class="px-4 py-3 font-semibold">Target Price</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!recommendations.length) { %>
+        <tr><td colspan="5" class="px-4 py-6 text-center text-navy-400">No recommendations yet. Create your first one.</td></tr>
+      <% } %>
+      <% recommendations.forEach(function(r) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-semibold text-navy-800"><%= r.stockCode %><% if (r.stockName) { %><span class="text-navy-400 font-normal"> · <%= r.stockName %></span><% } %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= r.rating === 'BUY' ? 'bg-emerald-50 text-emerald-700' : r.rating === 'SELL' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
+              <%= r.rating %>
+            </span>
+          </td>
+          <td class="px-4 py-3"><%= r.targetPrice ? '₦' + r.targetPrice.toFixed(2) : '—' %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full <%= r.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
+              <%= r.status %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+            <% if (can('manage_recommendations')) { %>
+              <a href="/admin/recommendations/<%= r.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+              <form action="/admin/recommendations/<%= r.id %>/delete" method="POST" class="inline"
+                onsubmit="return confirm('Delete this recommendation? This cannot be undone.');">
+                <button class="font-semibold text-red-600 hover:underline">Delete</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

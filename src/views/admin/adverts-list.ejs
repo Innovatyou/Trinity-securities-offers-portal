@@ -1,0 +1,71 @@
+<div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+  <div>
+    <h2 class="font-bold text-navy-800">Adverts</h2>
+    <p class="text-xs text-navy-400 mt-0.5">
+      Push mode: <span class="font-semibold <%= pushMode === 'LIVE' ? 'text-emerald-600' : 'text-gold-600' %>"><%= pushMode %></span>
+      <% if (pushMode !== 'LIVE') { %>— sends are logged, not actually delivered, until FCM_SERVICE_ACCOUNT_JSON is set.<% } %>
+    </p>
+  </div>
+  <% if (can('manage_adverts')) { %>
+  <a href="/admin/adverts/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Advert</a>
+  <% } %>
+</div>
+
+<p class="sm:hidden text-xs text-navy-400 mb-1">Swipe table to see more &rarr;</p>
+<div class="bg-white rounded-xl border border-navy-100 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Title</th>
+        <th class="px-4 py-3 font-semibold">Placement</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold">Sent</th>
+        <th class="px-4 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!adverts.length) { %>
+        <tr><td colspan="5" class="px-4 py-6 text-center text-navy-400">No adverts yet. Create your first one.</td></tr>
+      <% } %>
+      <% adverts.forEach(function(ad) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-semibold text-navy-800"><%= ad.title %></td>
+          <td class="px-4 py-3"><%= ad.placement %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= ad.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : ad.status === 'EXPIRED' ? 'bg-slate-100 text-slate-500' : 'bg-gold-50 text-gold-600' %>">
+              <%= ad.status %>
+            </span>
+          </td>
+          <td class="px-4 py-3"><%= ad.sentAt ? ad.sentAt.toLocaleString('en-GB') : '—' %></td>
+          <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+            <% if (can('send_adverts') && ad.placement !== 'BANNER' && ad.status === 'ACTIVE') { %>
+              <form action="/admin/adverts/<%= ad.id %>/send" method="POST" class="inline"
+                onsubmit="return confirm('<%= ad.sentAt ? 'Send this advert again to every registered device?' : 'Send this advert now to every registered device?' %>');">
+                <button class="font-semibold text-navy-600 hover:underline"><%= ad.sentAt ? 'Resend' : 'Send now' %></button>
+              </form>
+            <% } %>
+            <% if (can('manage_adverts')) { %>
+              <a href="/admin/adverts/<%= ad.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+              <% if (ad.status !== 'ACTIVE') { %>
+                <form action="/admin/adverts/<%= ad.id %>/status" method="POST" class="inline">
+                  <input type="hidden" name="status" value="ACTIVE" />
+                  <button class="font-semibold text-emerald-600 hover:underline">Activate</button>
+                </form>
+              <% } else { %>
+                <form action="/admin/adverts/<%= ad.id %>/status" method="POST" class="inline">
+                  <input type="hidden" name="status" value="EXPIRED" />
+                  <button class="font-semibold text-red-600 hover:underline">Expire</button>
+                </form>
+              <% } %>
+              <form action="/admin/adverts/<%= ad.id %>/delete" method="POST" class="inline"
+                onsubmit="return confirm('Delete this advert? This cannot be undone.');">
+                <button class="font-semibold text-red-600 hover:underline">Delete</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

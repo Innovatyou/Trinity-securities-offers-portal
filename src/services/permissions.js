@@ -20,11 +20,23 @@ const ROLES = {
       "confirm_payment",
       "unconfirm_payment",
       "edit_delete_subscriptions",
+      "manage_news",
+      "manage_recommendations",
+      "manage_adverts",
+      "send_adverts",
     ],
   },
   OFFERS_MANAGER: {
     label: "Offers Manager",
     permissions: ["manage_offers"],
+  },
+  CONTENT_MANAGER: {
+    label: "Content Manager",
+    permissions: ["manage_news", "manage_recommendations"],
+  },
+  MARKETING_MANAGER: {
+    label: "Marketing Manager",
+    permissions: ["manage_adverts", "send_adverts"],
   },
   // Can view/create subscriptions and issue receipts, but not confirm/reject
   // (Finance/Executive/Super Admin only) and not edit/delete an existing

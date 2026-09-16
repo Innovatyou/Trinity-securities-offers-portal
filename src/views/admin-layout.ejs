@@ -24,6 +24,9 @@
         <a href="/admin/offers/new" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/offers/new' ? 'bg-navy-700 font-semibold' : '' %>">New Offer</a>
         <% } %>
         <a href="/admin/subscriptions" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath === '/admin/subscriptions' ? 'bg-navy-700 font-semibold' : '' %>">Subscriptions</a>
+        <a href="/admin/news" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/news') ? 'bg-navy-700 font-semibold' : '' %>">News &amp; Analysis</a>
+        <a href="/admin/recommendations" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/recommendations') ? 'bg-navy-700 font-semibold' : '' %>">Stock Recommendations</a>
+        <a href="/admin/adverts" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/adverts') ? 'bg-navy-700 font-semibold' : '' %>">Adverts</a>
         <% if (typeof can === 'function' && can('manage_admins')) { %>
         <a href="/admin/users" class="block px-3 py-2 rounded-lg hover:bg-navy-700 <%= currentPath.startsWith('/admin/users') ? 'bg-navy-700 font-semibold' : '' %>">Admin Users</a>
         <% } %>

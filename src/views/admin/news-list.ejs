@@ -1,0 +1,47 @@
+<div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+  <h2 class="font-bold text-navy-800">News &amp; Analysis</h2>
+  <% if (can('manage_news')) { %>
+  <a href="/admin/news/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Article</a>
+  <% } %>
+</div>
+
+<p class="sm:hidden text-xs text-navy-400 mb-1">Swipe table to see more &rarr;</p>
+<div class="bg-white rounded-xl border border-navy-100 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-navy-50 text-navy-500 text-left">
+      <tr>
+        <th class="px-4 py-3 font-semibold">Title</th>
+        <th class="px-4 py-3 font-semibold">Category</th>
+        <th class="px-4 py-3 font-semibold">Published</th>
+        <th class="px-4 py-3 font-semibold">Status</th>
+        <th class="px-4 py-3 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!articles.length) { %>
+        <tr><td colspan="5" class="px-4 py-6 text-center text-navy-400">No articles yet. Create your first one.</td></tr>
+      <% } %>
+      <% articles.forEach(function(a) { %>
+        <tr class="border-t border-navy-50">
+          <td class="px-4 py-3 font-semibold text-navy-800"><%= a.title %></td>
+          <td class="px-4 py-3"><%= a.category %></td>
+          <td class="px-4 py-3"><%= a.publishedAt ? a.publishedAt.toLocaleDateString('en-GB') : '—' %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-semibold px-2 py-1 rounded-full <%= a.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
+              <%= a.status %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+            <% if (can('manage_news')) { %>
+              <a href="/admin/news/<%= a.id %>/edit" class="font-semibold text-navy-600 hover:underline">Edit</a>
+              <form action="/admin/news/<%= a.id %>/delete" method="POST" class="inline"
+                onsubmit="return confirm('Delete this article? This cannot be undone.');">
+                <button class="font-semibold text-red-600 hover:underline">Delete</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

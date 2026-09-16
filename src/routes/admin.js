@@ -9,6 +9,7 @@ const mailer = require("../services/mailer");
 const receipt = require("../services/receipt");
 const { generateSubscriptionReference } = require("../services/reference");
 const { notifySubscriber } = require("../services/notifications");
+const push = require("../services/push");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -241,6 +242,195 @@ function offerDataFromBody(body) {
     termSheetUrl: body.termSheetUrl || null,
     pricingSupplementUrl: body.pricingSupplementUrl || null,
     referralRequired: body.referralRequired === "on",
+  };
+}
+
+// ---------- News & Analysis CRUD ----------
+
+router.get("/news", requireAdmin, (req, res) => {
+  res.render("admin/news-list", { title: "News & Analysis", layout: "admin-layout", articles: db.listNews() });
+});
+
+router.get("/news/new", requireAdmin, requirePermission("manage_news"), (req, res) => {
+  res.render("admin/news-form", { title: "New Article", layout: "admin-layout", article: null });
+});
+
+router.post("/news", requireAdmin, requirePermission("manage_news"), (req, res) => {
+  db.createNews(newsDataFromBody(req.body));
+  req.flash("success", "Article saved.");
+  res.redirect("/admin/news");
+});
+
+router.get("/news/:id/edit", requireAdmin, requirePermission("manage_news"), (req, res) => {
+  const article = db.getNewsById(req.params.id);
+  if (!article) {
+    req.flash("error", "Article not found.");
+    return res.redirect("/admin/news");
+  }
+  res.render("admin/news-form", { title: "Edit Article", layout: "admin-layout", article });
+});
+
+router.post("/news/:id", requireAdmin, requirePermission("manage_news"), (req, res) => {
+  db.updateNews(req.params.id, newsDataFromBody(req.body));
+  req.flash("success", "Article updated.");
+  res.redirect("/admin/news");
+});
+
+router.post("/news/:id/delete", requireAdmin, requirePermission("manage_news"), (req, res) => {
+  db.deleteNews(req.params.id);
+  req.flash("success", "Article deleted.");
+  res.redirect("/admin/news");
+});
+
+function newsDataFromBody(body) {
+  return {
+    title: body.title,
+    category: body.category || "NEWS",
+    summary: body.summary || null,
+    body: body.body || null,
+    imageUrl: body.imageUrl || null,
+    author: body.author || null,
+    status: body.status || "DRAFT",
+  };
+}
+
+// ---------- Stock Recommendations CRUD ----------
+
+router.get("/recommendations", requireAdmin, (req, res) => {
+  res.render("admin/recommendations-list", {
+    title: "Stock Recommendations",
+    layout: "admin-layout",
+    recommendations: db.listRecommendations(),
+  });
+});
+
+router.get("/recommendations/new", requireAdmin, requirePermission("manage_recommendations"), (req, res) => {
+  res.render("admin/recommendation-form", { title: "New Recommendation", layout: "admin-layout", recommendation: null });
+});
+
+router.post("/recommendations", requireAdmin, requirePermission("manage_recommendations"), (req, res) => {
+  db.createRecommendation(recommendationDataFromBody(req.body));
+  req.flash("success", "Recommendation saved.");
+  res.redirect("/admin/recommendations");
+});
+
+router.get("/recommendations/:id/edit", requireAdmin, requirePermission("manage_recommendations"), (req, res) => {
+  const recommendation = db.getRecommendationById(req.params.id);
+  if (!recommendation) {
+    req.flash("error", "Recommendation not found.");
+    return res.redirect("/admin/recommendations");
+  }
+  res.render("admin/recommendation-form", { title: "Edit Recommendation", layout: "admin-layout", recommendation });
+});
+
+router.post("/recommendations/:id", requireAdmin, requirePermission("manage_recommendations"), (req, res) => {
+  db.updateRecommendation(req.params.id, recommendationDataFromBody(req.body));
+  req.flash("success", "Recommendation updated.");
+  res.redirect("/admin/recommendations");
+});
+
+router.post("/recommendations/:id/delete", requireAdmin, requirePermission("manage_recommendations"), (req, res) => {
+  db.deleteRecommendation(req.params.id);
+  req.flash("success", "Recommendation deleted.");
+  res.redirect("/admin/recommendations");
+});
+
+function recommendationDataFromBody(body) {
+  return {
+    stockCode: (body.stockCode || "").toUpperCase(),
+    stockName: body.stockName || null,
+    rating: body.rating || "HOLD",
+    targetPrice: body.targetPrice ? parseFloat(body.targetPrice) : null,
+    rationale: body.rationale || null,
+    analyst: body.analyst || null,
+    status: body.status || "DRAFT",
+  };
+}
+
+// ---------- Adverts CRUD (in-app banners + push notifications) ----------
+
+router.get("/adverts", requireAdmin, (req, res) => {
+  res.render("admin/adverts-list", {
+    title: "Adverts",
+    layout: "admin-layout",
+    adverts: db.listAdverts(),
+    pushMode: push.MODE,
+  });
+});
+
+router.get("/adverts/new", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
+  res.render("admin/advert-form", { title: "New Advert", layout: "admin-layout", advert: null });
+});
+
+router.post("/adverts", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
+  db.createAdvert(advertDataFromBody(req.body));
+  req.flash("success", "Advert saved.");
+  res.redirect("/admin/adverts");
+});
+
+router.get("/adverts/:id/edit", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
+  const advert = db.getAdvertById(req.params.id);
+  if (!advert) {
+    req.flash("error", "Advert not found.");
+    return res.redirect("/admin/adverts");
+  }
+  res.render("admin/advert-form", { title: "Edit Advert", layout: "admin-layout", advert });
+});
+
+router.post("/adverts/:id", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
+  db.updateAdvert(req.params.id, advertDataFromBody(req.body));
+  req.flash("success", "Advert updated.");
+  res.redirect("/admin/adverts");
+});
+
+router.post("/adverts/:id/status", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
+  db.updateAdvertStatus(req.params.id, req.body.status);
+  req.flash("success", "Advert status updated.");
+  res.redirect("/admin/adverts");
+});
+
+router.post("/adverts/:id/delete", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
+  db.deleteAdvert(req.params.id);
+  req.flash("success", "Advert deleted.");
+  res.redirect("/admin/adverts");
+});
+
+// Push send is separate from status: an advert can be ACTIVE as a pure
+// banner without ever being pushed, and once pushed it stays visible in the
+// app's notification inbox (GET /api/adverts) regardless of PUSH_MODE.
+router.post("/adverts/:id/send", requireAdmin, requirePermission("send_adverts"), async (req, res) => {
+  const advert = db.getAdvertById(req.params.id);
+  if (!advert) {
+    req.flash("error", "Advert not found.");
+    return res.redirect("/admin/adverts");
+  }
+  if (advert.placement === "BANNER") {
+    req.flash("error", "This advert is banner-only - switch its placement to Notification or Both to send it.");
+    return res.redirect("/admin/adverts");
+  }
+  try {
+    const result = await push.sendAdvertPush(advert);
+    db.markAdvertSent(advert.id);
+    req.flash(
+      "success",
+      `Sent to ${result.sent} device(s)${result.failed ? `, ${result.failed} failed` : ""} (${result.mode} mode).`
+    );
+  } catch (err) {
+    req.flash("error", `Could not send: ${err.message}`);
+  }
+  res.redirect("/admin/adverts");
+});
+
+function advertDataFromBody(body) {
+  return {
+    title: body.title,
+    message: body.message || null,
+    imageUrl: body.imageUrl || null,
+    linkUrl: body.linkUrl || null,
+    placement: body.placement || "BANNER",
+    status: body.status || "DRAFT",
+    startsAt: body.startsAt ? new Date(body.startsAt) : null,
+    endsAt: body.endsAt ? new Date(body.endsAt) : null,
   };
 }
 
