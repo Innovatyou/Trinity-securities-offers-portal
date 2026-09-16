@@ -247,7 +247,7 @@ function offerDataFromBody(body) {
 
 // ---------- News & Analysis CRUD ----------
 
-router.get("/news", requireAdmin, (req, res) => {
+router.get("/news", requireAdmin, requirePermission("manage_news"), (req, res) => {
   res.render("admin/news-list", { title: "News & Analysis", layout: "admin-layout", articles: db.listNews() });
 });
 
@@ -296,7 +296,7 @@ function newsDataFromBody(body) {
 
 // ---------- Stock Recommendations CRUD ----------
 
-router.get("/recommendations", requireAdmin, (req, res) => {
+router.get("/recommendations", requireAdmin, requirePermission("manage_recommendations"), (req, res) => {
   res.render("admin/recommendations-list", {
     title: "Stock Recommendations",
     layout: "admin-layout",
@@ -349,7 +349,7 @@ function recommendationDataFromBody(body) {
 
 // ---------- Adverts CRUD (in-app banners + push notifications) ----------
 
-router.get("/adverts", requireAdmin, (req, res) => {
+router.get("/adverts", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
   res.render("admin/adverts-list", {
     title: "Adverts",
     layout: "admin-layout",
