@@ -68,9 +68,10 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
   const { subscriptionFor, bvn } = req.body;
   const isForMinor = subscriptionFor === "minor";
 
-  const contactDestination = (req.body.contactDestination || "").trim();
-  if (!contactDestination) {
-    req.flash("error", "Enter your email or phone number.");
+  const email = (req.body.email || "").trim();
+  const phone = (req.body.phone || "").trim();
+  if (!email || !EMAIL_RE.test(email)) {
+    req.flash("error", "Enter a valid email address.");
     return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
   }
 
@@ -110,14 +111,11 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     minorId = minor.id;
   }
 
-  const contactEmail = EMAIL_RE.test(contactDestination) ? contactDestination : null;
-  const contactPhone = EMAIL_RE.test(contactDestination) ? null : contactDestination;
-
   const subscriber = db.upsertSubscriberByBvn({
     bvn: verifiedBvn.value,
     fullName: verifiedBvn.fullName,
-    email: contactEmail,
-    phone: contactPhone,
+    email,
+    phone: phone || null,
     trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
     cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
   });
