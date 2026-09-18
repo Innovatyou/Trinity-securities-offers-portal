@@ -534,7 +534,8 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
 
   const fullName = (req.body.fullName || "").trim();
   const bvn = (req.body.bvn || "").trim();
-  const contactDestination = (req.body.contactDestination || "").trim();
+  const email = (req.body.email || "").trim();
+  const phone = (req.body.phone || "").trim();
   const isForMinor = req.body.subscriptionFor === "minor";
   const shares = parseInt(req.body.numberOfShares, 10);
 
@@ -542,8 +543,8 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
     req.flash("error", "Enter the investor's full name and an 11-digit BVN.");
     return res.redirect("/admin/subscriptions/new");
   }
-  if (!contactDestination) {
-    req.flash("error", "Enter the investor's email or phone number.");
+  if (!email || !EMAIL_RE.test(email)) {
+    req.flash("error", "Enter a valid email address for the investor.");
     return res.redirect("/admin/subscriptions/new");
   }
   if (
@@ -573,8 +574,8 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
   const subscriber = db.upsertSubscriberByBvn({
     bvn,
     fullName,
-    email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
-    phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
+    email,
+    phone: phone || null,
     trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
     cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
   });
@@ -640,7 +641,8 @@ router.post("/subscriptions/:id", requireAdmin, requirePermission("edit_delete_s
 
   const fullName = (req.body.fullName || "").trim();
   const bvn = (req.body.bvn || "").trim();
-  const contactDestination = (req.body.contactDestination || "").trim();
+  const email = (req.body.email || "").trim();
+  const phone = (req.body.phone || "").trim();
   const isForMinor = req.body.subscriptionFor === "minor";
   const shares = parseInt(req.body.numberOfShares, 10);
 
@@ -648,8 +650,8 @@ router.post("/subscriptions/:id", requireAdmin, requirePermission("edit_delete_s
     req.flash("error", "Enter the investor's full name and an 11-digit BVN.");
     return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
   }
-  if (!contactDestination) {
-    req.flash("error", "Enter the investor's email or phone number.");
+  if (!email || !EMAIL_RE.test(email)) {
+    req.flash("error", "Enter a valid email address for the investor.");
     return res.redirect(`/admin/subscriptions/${subscription.id}/edit`);
   }
   if (
@@ -683,8 +685,8 @@ router.post("/subscriptions/:id", requireAdmin, requirePermission("edit_delete_s
       db.updateSubscriber(subscription.subscriberId, {
         fullName,
         bvn,
-        email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
-        phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
+        email,
+        phone: phone || null,
         trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
         cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
       });
