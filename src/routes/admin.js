@@ -576,6 +576,7 @@ router.post("/subscriptions", requireAdmin, requirePermission("manage_subscripti
     email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
     phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
     trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
+    cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
   });
 
   const alreadyConfirmed = req.body.status === "CONFIRMED";
@@ -685,6 +686,7 @@ router.post("/subscriptions/:id", requireAdmin, requirePermission("edit_delete_s
         email: EMAIL_RE.test(contactDestination) ? contactDestination : null,
         phone: EMAIL_RE.test(contactDestination) ? null : contactDestination,
         trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
+        cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
       });
     } catch (err) {
       req.flash("error", "That BVN is already used by another subscriber.");

@@ -119,6 +119,7 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     email: contactEmail,
     phone: contactPhone,
     trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
+    cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
   });
 
   db.updateSubscription(subscription.id, {

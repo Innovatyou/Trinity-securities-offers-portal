@@ -45,6 +45,10 @@
       <label class="block text-sm font-semibold text-navy-700 mb-1">Trinity Securities Account ID <span class="text-navy-400 font-normal">(optional)</span></label>
       <input name="trinityAccountId" placeholder="e.g. TSL-AC-00123" value="<%= subscriber ? (subscriber.trinityAccountId || '') : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
     </div>
+    <div class="sm:col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">CSCS Account Number <span class="text-navy-400 font-normal">(optional)</span></label>
+      <input name="cscsAccountId" placeholder="e.g. 1234567890" value="<%= subscriber ? (subscriber.cscsAccountId || '') : '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+    </div>
   </div>
 
   <div>

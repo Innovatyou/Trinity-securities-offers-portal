@@ -62,6 +62,7 @@ db.exec(`
     email TEXT,
     phone TEXT,
     trinity_account_id TEXT,
+    cscs_account_id TEXT,
     created_at TEXT NOT NULL
   );
 
@@ -175,6 +176,9 @@ if (!subscriberColumns.includes("phone")) {
 if (!subscriberColumns.includes("trinity_account_id")) {
   db.exec(`ALTER TABLE subscribers ADD COLUMN trinity_account_id TEXT`);
 }
+if (!subscriberColumns.includes("cscs_account_id")) {
+  db.exec(`ALTER TABLE subscribers ADD COLUMN cscs_account_id TEXT`);
+}
 
 // Migrate subscriptions for databases created before share allotment tracking
 // existed. Allotment is a separate fact from CONFIRMED (payment verified) -
@@ -234,6 +238,7 @@ function rowToSubscriber(row) {
     email: row.email,
     phone: row.phone,
     trinityAccountId: row.trinity_account_id,
+    cscsAccountId: row.cscs_account_id,
     createdAt: new Date(row.created_at),
   };
 }
@@ -406,20 +411,20 @@ function getSubscriberByBvn(bvn) {
 // step (see subscribe.js) - optional, and only overwrite an existing value
 // when a new one is actually supplied (COALESCE), so a returning subscriber
 // verifying with the other channel doesn't blank out the one already on file.
-function upsertSubscriberByBvn({ bvn, fullName, email, phone, trinityAccountId }) {
+function upsertSubscriberByBvn({ bvn, fullName, email, phone, trinityAccountId, cscsAccountId }) {
   const existing = getSubscriberByBvn(bvn);
   if (existing) {
     db.prepare(
       `UPDATE subscribers SET bvn_verified = 1, full_name = ?, email = COALESCE(?, email), phone = COALESCE(?, phone),
-        trinity_account_id = COALESCE(?, trinity_account_id) WHERE id = ?`
-    ).run(fullName, email || null, phone || null, trinityAccountId || null, existing.id);
+        trinity_account_id = COALESCE(?, trinity_account_id), cscs_account_id = COALESCE(?, cscs_account_id) WHERE id = ?`
+    ).run(fullName, email || null, phone || null, trinityAccountId || null, cscsAccountId || null, existing.id);
     return getSubscriberById(existing.id);
   }
   const id = genId();
   db.prepare(
-    `INSERT INTO subscribers (id, full_name, bvn, bvn_verified, email, phone, trinity_account_id, created_at)
-     VALUES (?, ?, ?, 1, ?, ?, ?, ?)`
-  ).run(id, fullName, bvn, email || null, phone || null, trinityAccountId || null, now());
+    `INSERT INTO subscribers (id, full_name, bvn, bvn_verified, email, phone, trinity_account_id, cscs_account_id, created_at)
+     VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)`
+  ).run(id, fullName, bvn, email || null, phone || null, trinityAccountId || null, cscsAccountId || null, now());
   return getSubscriberById(id);
 }
 
@@ -428,10 +433,10 @@ function upsertSubscriberByBvn({ bvn, fullName, email, phone, trinityAccountId }
 // bvn has a UNIQUE constraint, so this throws if the new value collides
 // with a different subscriber - callers should catch and show a friendly
 // error rather than a raw SQLite constraint message.
-function updateSubscriber(id, { fullName, bvn, email, phone, trinityAccountId }) {
+function updateSubscriber(id, { fullName, bvn, email, phone, trinityAccountId, cscsAccountId }) {
   db.prepare(
-    `UPDATE subscribers SET full_name = ?, bvn = ?, email = ?, phone = ?, trinity_account_id = ? WHERE id = ?`
-  ).run(fullName, bvn, email || null, phone || null, trinityAccountId || null, id);
+    `UPDATE subscribers SET full_name = ?, bvn = ?, email = ?, phone = ?, trinity_account_id = ?, cscs_account_id = ? WHERE id = ?`
+  ).run(fullName, bvn, email || null, phone || null, trinityAccountId || null, cscsAccountId || null, id);
   return getSubscriberById(id);
 }
 
