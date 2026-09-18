@@ -436,14 +436,26 @@ function advertDataFromBody(body) {
 
 // ---------- Subscriptions ----------
 
+const SUBSCRIPTIONS_PAGE_SIZE = 10;
+
 router.get("/subscriptions", requireAdmin, (req, res) => {
   const statusFilter = req.query.status;
-  const subscriptions = db.listSubscriptions({ status: statusFilter || undefined });
+  const totalCount = db.countSubscriptions({ status: statusFilter || undefined });
+  const totalPages = Math.max(1, Math.ceil(totalCount / SUBSCRIPTIONS_PAGE_SIZE));
+  const page = Math.min(totalPages, Math.max(1, parseInt(req.query.page, 10) || 1));
+  const subscriptions = db.listSubscriptions({
+    status: statusFilter || undefined,
+    limit: SUBSCRIPTIONS_PAGE_SIZE,
+    offset: (page - 1) * SUBSCRIPTIONS_PAGE_SIZE,
+  });
   res.render("admin/subscriptions", {
     title: "Subscriptions",
     layout: "admin-layout",
     subscriptions,
     statusFilter: statusFilter || "",
+    page,
+    totalPages,
+    totalCount,
   });
 });
 

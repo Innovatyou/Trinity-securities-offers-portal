@@ -109,6 +109,25 @@
   </table>
 </div>
 
+<% if (totalCount > 0) { %>
+<div class="flex items-center justify-between mt-4 gap-2 flex-wrap text-sm">
+  <p class="text-navy-400"><%= totalCount.toLocaleString() %> subscription<%= totalCount === 1 ? '' : 's' %> &middot; page <%= page %> of <%= totalPages %></p>
+  <div class="flex items-center gap-2">
+    <% const qs = (p) => `?status=${statusFilter}&page=${p}`; %>
+    <% if (page > 1) { %>
+      <a href="<%= qs(page - 1) %>" class="px-3 py-1.5 rounded-lg bg-white border border-navy-100 font-semibold text-navy-700 hover:bg-navy-50">&larr; Prev</a>
+    <% } else { %>
+      <span class="px-3 py-1.5 rounded-lg border border-navy-50 text-navy-300 cursor-not-allowed">&larr; Prev</span>
+    <% } %>
+    <% if (page < totalPages) { %>
+      <a href="<%= qs(page + 1) %>" class="px-3 py-1.5 rounded-lg bg-white border border-navy-100 font-semibold text-navy-700 hover:bg-navy-50">Next &rarr;</a>
+    <% } else { %>
+      <span class="px-3 py-1.5 rounded-lg border border-navy-50 text-navy-300 cursor-not-allowed">Next &rarr;</span>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("tr[data-row-href]").forEach(function (row) {

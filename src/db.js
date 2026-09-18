@@ -523,11 +523,26 @@ function updateSubscription(id, data) {
   return getSubscriptionById(id);
 }
 
-function listSubscriptions({ status } = {}) {
+function listSubscriptions({ status, limit, offset } = {}) {
+  const hasPage = Number.isInteger(limit);
   const rows = status
-    ? db.prepare(`SELECT * FROM subscriptions WHERE status = ? ORDER BY created_at DESC`).all(status)
-    : db.prepare(`SELECT * FROM subscriptions ORDER BY created_at DESC`).all();
+    ? db
+        .prepare(
+          `SELECT * FROM subscriptions WHERE status = ? ORDER BY created_at DESC` +
+            (hasPage ? ` LIMIT ? OFFSET ?` : ``)
+        )
+        .all(...(hasPage ? [status, limit, offset || 0] : [status]))
+    : db
+        .prepare(`SELECT * FROM subscriptions ORDER BY created_at DESC` + (hasPage ? ` LIMIT ? OFFSET ?` : ``))
+        .all(...(hasPage ? [limit, offset || 0] : []));
   return rows.map(rowToSubscription).map(attachRelations);
+}
+
+function countSubscriptions({ status } = {}) {
+  const row = status
+    ? db.prepare(`SELECT COUNT(*) as count FROM subscriptions WHERE status = ?`).get(status)
+    : db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get();
+  return row.count;
 }
 
 // Mobile app's "my subscriptions" history - identified by the investor's
@@ -1049,6 +1064,7 @@ module.exports = {
   createSubscription,
   updateSubscription,
   listSubscriptions,
+  countSubscriptions,
   listSubscriptionsByTrinityAccountId,
   findOtherActiveSubscriptionForBvnAndOffer,
   countSubscriptionsByStatus,
