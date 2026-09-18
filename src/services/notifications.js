@@ -43,6 +43,27 @@ async function notifySubscriber(subscription, { subject, message }) {
 }
 
 /**
+ * Emails an arbitrary address directly - for flows (like account closure
+ * requests) that don't have a db.js subscriber row to hang the address off
+ * of. Same MOCK-mode gating and best-effort behaviour as notifySubscriber.
+ * @param {{to: string, toName?: string, subject: string, message: string}} params
+ */
+async function notifyEmail({ to, toName, subject, message }) {
+  if (!to) return;
+
+  if (mode() !== "LIVE") {
+    console.log(`[notify:MOCK] ${to}: ${subject}`);
+    return;
+  }
+
+  try {
+    await mailer.sendEmail({ to, toName, subject, html: `<p>${message}</p>` });
+  } catch (err) {
+    console.error("Email notification failed:", err.message);
+  }
+}
+
+/**
  * Emails Trinity's internal staff list (STAFF_NOTIFY_TO / STAFF_NOTIFY_CC
  * in .env) - e.g. when a payment is reported and needs reconciling.
  * No-op if STAFF_NOTIFY_TO isn't set.
@@ -67,4 +88,4 @@ async function notifyStaff({ subject, message }) {
   }
 }
 
-module.exports = { notifySubscriber, notifyStaff };
+module.exports = { notifySubscriber, notifyStaff, notifyEmail };

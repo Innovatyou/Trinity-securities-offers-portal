@@ -2,7 +2,7 @@ const express = require("express");
 const db = require("../db");
 const { verifyBVN, verifyNIN } = require("../services/verification");
 const { generateSubscriptionReference } = require("../services/reference");
-const { notifySubscriber, notifyStaff } = require("../services/notifications");
+const { notifySubscriber, notifyStaff, notifyEmail } = require("../services/notifications");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -336,6 +336,53 @@ router.post("/verify-nin", async (req, res) => {
   }
 
   res.json(result);
+});
+
+// ---------------------------------------------------------------------
+// Account closure/disable requests (mobile app Settings screen)
+// ---------------------------------------------------------------------
+// Identified by the EMSX trinityAccountId the app is already logged into -
+// same trust model as GET /subscriptions above: no separate portal login.
+// This never closes the account itself; it just records the request and
+// alerts staff, who verify identity and follow up before anything changes.
+router.use(["/account/close-request"], (req, res, next) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  next();
+});
+
+router.post("/account/close-request", async (req, res) => {
+  const trinityAccountId = (req.body.trinityAccountId || "").toString().trim();
+  const email = (req.body.email || "").toString().trim();
+  const reason = (req.body.reason || "").toString().trim().slice(0, 2000);
+  if (!trinityAccountId) {
+    return res.status(400).json({ error: "trinityAccountId is required" });
+  }
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: "A valid email is required" });
+  }
+
+  const request = db.createAccountClosureRequest({ trinityAccountId, email, reason });
+
+  await notifyEmail({
+    to: email,
+    subject: "We've received your account request",
+    message:
+      "We've received your request to close or disable your Trinity Securities account. " +
+      "Our team will contact you to verify your identity and confirm before anything changes. " +
+      "If you didn't make this request, please contact support immediately.",
+  });
+
+  await notifyStaff({
+    subject: `Account closure request - ${trinityAccountId}`,
+    message:
+      `A customer (Trinity account ${trinityAccountId}, ${email}) has requested to close or disable ` +
+      `their account.${reason ? ` Reason given: ${reason}` : " No reason given."} ` +
+      "Please verify their identity and follow up.",
+  });
+
+  res.status(201).json({ request });
 });
 
 module.exports = router;

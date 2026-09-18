@@ -150,6 +150,15 @@ db.exec(`
     permission TEXT NOT NULL,
     PRIMARY KEY (role, permission)
   );
+
+  CREATE TABLE IF NOT EXISTS account_closure_requests (
+    id TEXT PRIMARY KEY,
+    trinity_account_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    created_at TEXT NOT NULL
+  );
 `);
 
 // Migrate admin_users for databases created before role/status existed
@@ -1044,6 +1053,40 @@ function listDeviceTokens() {
   return db.prepare(`SELECT token, platform FROM device_tokens`).all();
 }
 
+// ---------------------------------------------------------------------
+// Account closure/disable requests (submitted from the mobile app)
+// ---------------------------------------------------------------------
+
+function rowToAccountClosureRequest(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    trinityAccountId: row.trinity_account_id,
+    email: row.email,
+    reason: row.reason,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
+function createAccountClosureRequest({ trinityAccountId, email, reason }) {
+  const id = genId();
+  db.prepare(
+    `INSERT INTO account_closure_requests (id, trinity_account_id, email, reason, status, created_at)
+     VALUES (?, ?, ?, ?, 'PENDING', ?)`
+  ).run(id, trinityAccountId, email, reason || null, now());
+  return rowToAccountClosureRequest(
+    db.prepare(`SELECT * FROM account_closure_requests WHERE id = ?`).get(id)
+  );
+}
+
+function listAccountClosureRequests({ status } = {}) {
+  const rows = status
+    ? db.prepare(`SELECT * FROM account_closure_requests WHERE status = ? ORDER BY created_at DESC`).all(status)
+    : db.prepare(`SELECT * FROM account_closure_requests ORDER BY created_at DESC`).all();
+  return rows.map(rowToAccountClosureRequest);
+}
+
 module.exports = {
   raw: db,
   listOffers,
@@ -1102,4 +1145,6 @@ module.exports = {
   upsertDeviceToken,
   deleteDeviceToken,
   listDeviceTokens,
+  createAccountClosureRequest,
+  listAccountClosureRequests,
 };
