@@ -3,7 +3,12 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const db = require("../db");
 const { requireAdmin, requirePermission } = require("../middleware/adminAuth");
-const { handleAvatarUpload, deleteAvatarFile } = require("../middleware/upload");
+const {
+  handleAvatarUpload,
+  deleteAvatarFile,
+  handleAdvertImageUpload,
+  deleteAdvertImageFile,
+} = require("../middleware/upload");
 const { roleOptions, PERMISSIONS, getRolePermissionsMap, updateRolePermissions } = require("../services/permissions");
 const mailer = require("../services/mailer");
 const receipt = require("../services/receipt");
@@ -362,11 +367,17 @@ router.get("/adverts/new", requireAdmin, requirePermission("manage_adverts"), (r
   res.render("admin/advert-form", { title: "New Advert", layout: "admin-layout", advert: null });
 });
 
-router.post("/adverts", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
-  db.createAdvert(advertDataFromBody(req.body));
-  req.flash("success", "Advert saved.");
-  res.redirect("/admin/adverts");
-});
+router.post(
+  "/adverts",
+  requireAdmin,
+  requirePermission("manage_adverts"),
+  handleAdvertImageUpload,
+  (req, res) => {
+    db.createAdvert(advertDataFromBody(req));
+    req.flash("success", "Advert saved.");
+    res.redirect("/admin/adverts");
+  }
+);
 
 router.get("/adverts/:id/edit", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
   const advert = db.getAdvertById(req.params.id);
@@ -377,11 +388,28 @@ router.get("/adverts/:id/edit", requireAdmin, requirePermission("manage_adverts"
   res.render("admin/advert-form", { title: "Edit Advert", layout: "admin-layout", advert });
 });
 
-router.post("/adverts/:id", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
-  db.updateAdvert(req.params.id, advertDataFromBody(req.body));
-  req.flash("success", "Advert updated.");
-  res.redirect("/admin/adverts");
-});
+router.post(
+  "/adverts/:id",
+  requireAdmin,
+  requirePermission("manage_adverts"),
+  handleAdvertImageUpload,
+  (req, res) => {
+    const existing = db.getAdvertById(req.params.id);
+    if (!existing) {
+      req.flash("error", "Advert not found.");
+      return res.redirect("/admin/adverts");
+    }
+    const data = advertDataFromBody(req);
+    // Covers both cases: a new upload replacing an old one, and switching
+    // away from an uploaded image back to a plain URL (or clearing it) -
+    // deleteAdvertImageFile no-ops on its own if the old value wasn't
+    // actually one of our uploads, so this is safe to call unconditionally.
+    if (existing.imageUrl !== data.imageUrl) deleteAdvertImageFile(existing.imageUrl);
+    db.updateAdvert(req.params.id, data);
+    req.flash("success", "Advert updated.");
+    res.redirect("/admin/adverts");
+  }
+);
 
 router.post("/adverts/:id/status", requireAdmin, requirePermission("manage_adverts"), (req, res) => {
   db.updateAdvertStatus(req.params.id, req.body.status);
@@ -421,11 +449,15 @@ router.post("/adverts/:id/send", requireAdmin, requirePermission("send_adverts")
   res.redirect("/admin/adverts");
 });
 
-function advertDataFromBody(body) {
+// Takes the whole req (not just req.body) - an uploaded file (see
+// handleAdvertImageUpload) wins over whatever's typed in the Banner Image
+// URL field; without one, that URL field is used as before.
+function advertDataFromBody(req) {
+  const body = req.body;
   return {
     title: body.title,
     message: body.message || null,
-    imageUrl: body.imageUrl || null,
+    imageUrl: req.file ? `/uploads/adverts/${req.file.filename}` : body.imageUrl || null,
     linkUrl: body.linkUrl || null,
     placement: body.placement || "BANNER",
     status: body.status || "DRAFT",

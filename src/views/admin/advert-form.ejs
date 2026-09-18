@@ -1,5 +1,5 @@
 <% const ad = advert || {}; %>
-<form action="<%= advert ? `/admin/adverts/${advert.id}` : '/admin/adverts' %>" method="POST" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
+<form action="<%= advert ? `/admin/adverts/${advert.id}` : '/admin/adverts' %>" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
     <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Title</label>
@@ -10,8 +10,17 @@
       <textarea name="message" rows="3" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="Shown in the banner / notification body"><%= ad.message || '' %></textarea>
     </div>
     <div class="sm:col-span-2">
-      <label class="block text-sm font-semibold text-navy-700 mb-1">Banner Image URL (optional)</label>
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Banner Image</label>
+      <% if (ad.imageUrl) { %>
+        <img src="<%= ad.imageUrl %>" alt="" class="h-24 rounded-lg border border-navy-100 object-cover mb-2" />
+      <% } %>
+      <input type="file" name="bannerImage" accept="image/png,image/jpeg,image/webp,image/gif" class="text-sm" />
+      <p class="text-xs text-navy-400 mt-1">Upload from your device (PNG, JPEG, WEBP or GIF, up to 5MB) - replaces the current image above, if any.</p>
+    </div>
+    <div class="sm:col-span-2">
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Or Banner Image URL (optional)</label>
       <input name="imageUrl" value="<%= ad.imageUrl || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" placeholder="https://..." />
+      <p class="text-xs text-navy-400 mt-1">Only used if you don't upload a file above.</p>
     </div>
     <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Link URL (optional)</label>
