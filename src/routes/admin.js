@@ -373,7 +373,14 @@ router.post(
   requirePermission("manage_adverts"),
   handleAdvertImageUpload,
   (req, res) => {
-    db.createAdvert(advertDataFromBody(req));
+    const data = advertDataFromBody(req);
+    const titleError = advertTitleError(data);
+    if (titleError) {
+      if (req.file) deleteAdvertImageFile(data.imageUrl);
+      req.flash("error", titleError);
+      return res.redirect("/admin/adverts/new");
+    }
+    db.createAdvert(data);
     req.flash("success", "Advert saved.");
     res.redirect("/admin/adverts");
   }
@@ -400,6 +407,12 @@ router.post(
       return res.redirect("/admin/adverts");
     }
     const data = advertDataFromBody(req);
+    const titleError = advertTitleError(data);
+    if (titleError) {
+      if (req.file) deleteAdvertImageFile(data.imageUrl);
+      req.flash("error", titleError);
+      return res.redirect(`/admin/adverts/${req.params.id}/edit`);
+    }
     // Covers both cases: a new upload replacing an old one, and switching
     // away from an uploaded image back to a plain URL (or clearing it) -
     // deleteAdvertImageFile no-ops on its own if the old value wasn't
@@ -455,7 +468,7 @@ router.post("/adverts/:id/send", requireAdmin, requirePermission("send_adverts")
 function advertDataFromBody(req) {
   const body = req.body;
   return {
-    title: body.title,
+    title: (body.title || "").trim(),
     message: body.message || null,
     imageUrl: req.file ? `/uploads/adverts/${req.file.filename}` : body.imageUrl || null,
     linkUrl: body.linkUrl || null,
@@ -464,6 +477,17 @@ function advertDataFromBody(req) {
     startsAt: body.startsAt ? new Date(body.startsAt) : null,
     endsAt: body.endsAt ? new Date(body.endsAt) : null,
   };
+}
+
+// Title is the push notification headline, so NOTIFICATION/BOTH adverts need
+// one - but a BANNER-only advert can be a fully self-designed image with no
+// title at all (see banner_carousel.dart: a non-empty title is overlaid on
+// the image in the app, which is exactly what a banner admin might not want).
+function advertTitleError(data) {
+  if (data.placement !== "BANNER" && !data.title) {
+    return "Title is required for Notification/Both placements (it's the push notification headline).";
+  }
+  return null;
 }
 
 // ---------- Subscriptions ----------

@@ -2,8 +2,12 @@
 <form action="<%= advert ? `/admin/adverts/${advert.id}` : '/admin/adverts' %>" method="POST" enctype="multipart/form-data" class="bg-white rounded-xl border border-navy-100 p-6 max-w-2xl space-y-5">
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
     <div class="sm:col-span-2">
-      <label class="block text-sm font-semibold text-navy-700 mb-1">Title</label>
-      <input name="title" required value="<%= ad.title || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <label class="block text-sm font-semibold text-navy-700 mb-1">Title <span id="title-hint-tag" class="text-navy-400 font-normal"></span></label>
+      <input id="title-input" name="title" value="<%= ad.title || '' %>" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm" />
+      <p class="text-xs text-navy-400 mt-1">
+        Required for Notification/Both (it's the push notification headline). For Banner-only, leave it blank if your
+        image is already fully designed - a title here shows as overlaid text on top of the banner in the app.
+      </p>
     </div>
     <div class="sm:col-span-2">
       <label class="block text-sm font-semibold text-navy-700 mb-1">Message</label>
@@ -28,7 +32,7 @@
     </div>
     <div>
       <label class="block text-sm font-semibold text-navy-700 mb-1">Placement</label>
-      <select name="placement" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm">
+      <select id="placement-select" name="placement" class="w-full rounded-xl border border-navy-100 px-4 py-2.5 text-sm">
         <% [["BANNER", "Banner only"], ["NOTIFICATION", "Notification only"], ["BOTH", "Banner + Notification"]].forEach(function(opt) { %>
           <option value="<%= opt[0] %>" <%= ad.placement === opt[0] ? 'selected' : '' %>><%= opt[1] %></option>
         <% }) %>
@@ -59,3 +63,20 @@
     <button type="submit" class="flex-1 bg-navy-700 hover:bg-navy-800 text-white font-bold py-2.5 rounded-xl"><%= advert ? 'Save Changes' : 'Create Advert' %></button>
   </div>
 </form>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const placementSelect = document.getElementById("placement-select");
+    const titleInput = document.getElementById("title-input");
+    const titleHintTag = document.getElementById("title-hint-tag");
+
+    function syncTitle() {
+      const needsTitle = placementSelect.value !== "BANNER";
+      titleInput.required = needsTitle;
+      titleHintTag.textContent = needsTitle ? "*" : "(optional)";
+    }
+
+    placementSelect.addEventListener("change", syncTitle);
+    syncTitle();
+  });
+</script>
