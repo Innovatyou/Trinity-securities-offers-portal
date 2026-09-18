@@ -472,11 +472,13 @@ const SUBSCRIPTIONS_PAGE_SIZE = 10;
 
 router.get("/subscriptions", requireAdmin, (req, res) => {
   const statusFilter = req.query.status;
-  const totalCount = db.countSubscriptions({ status: statusFilter || undefined });
+  const q = (req.query.q || "").trim();
+  const totalCount = db.countSubscriptions({ status: statusFilter || undefined, q });
   const totalPages = Math.max(1, Math.ceil(totalCount / SUBSCRIPTIONS_PAGE_SIZE));
   const page = Math.min(totalPages, Math.max(1, parseInt(req.query.page, 10) || 1));
   const subscriptions = db.listSubscriptions({
     status: statusFilter || undefined,
+    q,
     limit: SUBSCRIPTIONS_PAGE_SIZE,
     offset: (page - 1) * SUBSCRIPTIONS_PAGE_SIZE,
   });
@@ -485,6 +487,7 @@ router.get("/subscriptions", requireAdmin, (req, res) => {
     layout: "admin-layout",
     subscriptions,
     statusFilter: statusFilter || "",
+    q,
     page,
     totalPages,
     totalCount,
@@ -501,7 +504,7 @@ function maskId(value) {
 
 router.get("/subscriptions/export.csv", requireAdmin, (req, res) => {
   const statusFilter = req.query.status;
-  const subscriptions = db.listSubscriptions({ status: statusFilter || undefined });
+  const subscriptions = db.listSubscriptions({ status: statusFilter || undefined, q: req.query.q || "" });
   const columns = [
     "reference",
     "status",

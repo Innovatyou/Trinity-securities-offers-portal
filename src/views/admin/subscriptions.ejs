@@ -4,11 +4,12 @@
 <% const canEditDelete = can('edit_delete_subscriptions'); %>
 <% const showActionsColumn = canManage || canConfirm || canUnconfirm || canEditDelete; %>
 
+<% const csvQs = [statusFilter ? 'status=' + encodeURIComponent(statusFilter) : '', q ? 'q=' + encodeURIComponent(q) : ''].filter(Boolean).join('&'); %>
 <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
   <div class="flex items-center gap-2 text-sm flex-wrap">
-    <a href="/admin/subscriptions" class="px-3 py-1.5 rounded-lg <%= !statusFilter ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>">All</a>
+    <a href="/admin/subscriptions<%= q ? '?q=' + encodeURIComponent(q) : '' %>" class="px-3 py-1.5 rounded-lg <%= !statusFilter ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>">All</a>
     <% ["PAYMENT_REPORTED", "CONFIRMED", "AWAITING_PAYMENT", "REJECTED"].forEach(function(s) { %>
-      <a href="/admin/subscriptions?status=<%= s %>" class="px-3 py-1.5 rounded-lg <%= statusFilter === s ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>"><%= s.replace('_', ' ') %></a>
+      <a href="/admin/subscriptions?status=<%= s %><%= q ? '&q=' + encodeURIComponent(q) : '' %>" class="px-3 py-1.5 rounded-lg <%= statusFilter === s ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>"><%= s.replace('_', ' ') %></a>
     <% }) %>
   </div>
   <div class="flex items-center gap-2 flex-wrap">
@@ -17,12 +18,27 @@
       Delete Selected
     </button>
     <% } %>
-    <a href="/admin/subscriptions/export.csv<%= statusFilter ? '?status=' + statusFilter : '' %>" class="text-sm font-semibold border border-navy-200 text-navy-700 px-4 py-2 rounded-lg hover:bg-navy-50">Export CSV</a>
+    <a href="/admin/subscriptions/export.csv<%= csvQs ? '?' + csvQs : '' %>" class="text-sm font-semibold border border-navy-200 text-navy-700 px-4 py-2 rounded-lg hover:bg-navy-50">Export CSV</a>
     <% if (canManage) { %>
     <a href="/admin/subscriptions/new" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">+ New Subscription</a>
     <% } %>
   </div>
 </div>
+
+<form action="/admin/subscriptions" method="GET" class="flex items-center gap-2 mb-4">
+  <% if (statusFilter) { %><input type="hidden" name="status" value="<%= statusFilter %>" /><% } %>
+  <input
+    type="search"
+    name="q"
+    value="<%= q %>"
+    placeholder="Search by reference, name, email, phone, account ID, or offer&hellip;"
+    class="w-full max-w-md rounded-xl border border-navy-100 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-600"
+  />
+  <button type="submit" class="text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-white px-4 py-2 rounded-lg">Search</button>
+  <% if (q) { %>
+    <a href="/admin/subscriptions<%= statusFilter ? '?status=' + statusFilter : '' %>" class="text-sm font-semibold text-navy-500 hover:text-navy-700 px-2">Clear</a>
+  <% } %>
+</form>
 
 <% if (canEditDelete) { %>
 <form id="batch-delete-form" action="/admin/subscriptions/batch-delete" method="POST" class="hidden"></form>
@@ -45,7 +61,7 @@
     </thead>
     <tbody>
       <% if (!subscriptions.length) { %>
-        <tr><td colspan="<%= 6 + (canEditDelete ? 1 : 0) + (showActionsColumn ? 1 : 0) %>" class="px-4 py-6 text-center text-navy-400">No subscriptions yet.</td></tr>
+        <tr><td colspan="<%= 6 + (canEditDelete ? 1 : 0) + (showActionsColumn ? 1 : 0) %>" class="px-4 py-6 text-center text-navy-400"><%= q ? `No subscriptions match "${q}".` : 'No subscriptions yet.' %></td></tr>
       <% } %>
       <% subscriptions.forEach(function(sub) { %>
         <tr class="border-t border-navy-50 cursor-pointer hover:bg-navy-50" data-row-href="/admin/subscriptions/<%= sub.id %>">
@@ -113,7 +129,7 @@
 <div class="flex items-center justify-between mt-4 gap-2 flex-wrap text-sm">
   <p class="text-navy-400"><%= totalCount.toLocaleString() %> subscription<%= totalCount === 1 ? '' : 's' %> &middot; page <%= page %> of <%= totalPages %></p>
   <div class="flex items-center gap-2">
-    <% const qs = (p) => `?status=${statusFilter}&page=${p}`; %>
+    <% const qs = (p) => `?status=${encodeURIComponent(statusFilter)}&q=${encodeURIComponent(q)}&page=${p}`; %>
     <% if (page > 1) { %>
       <a href="<%= qs(page - 1) %>" class="px-3 py-1.5 rounded-lg bg-white border border-navy-100 font-semibold text-navy-700 hover:bg-navy-50">&larr; Prev</a>
     <% } else { %>

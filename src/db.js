@@ -532,26 +532,49 @@ function updateSubscription(id, data) {
   return getSubscriptionById(id);
 }
 
-function listSubscriptions({ status, limit, offset } = {}) {
+// Shared by listSubscriptions/countSubscriptions below. Search never touches
+// bvn/nin - those stay masked everywhere on this list (see admin.js's
+// maskId comment), so letting a search box match against them would turn
+// it into a way to fish for a real BVN one digit at a time.
+function buildSubscriptionSearchClause({ status, q }) {
+  const clauses = [];
+  const params = [];
+  if (status) {
+    clauses.push(`s.status = ?`);
+    params.push(status);
+  }
+  const term = (q || "").trim();
+  if (term) {
+    const like = `%${term}%`;
+    clauses.push(
+      `(s.reference LIKE ? OR sub.full_name LIKE ? OR sub.email LIKE ? OR sub.phone LIKE ? OR ` +
+        `sub.trinity_account_id LIKE ? OR sub.cscs_account_id LIKE ? OR o.name LIKE ?)`
+    );
+    params.push(like, like, like, like, like, like, like);
+  }
+  return { where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", params };
+}
+
+function listSubscriptions({ status, q, limit, offset } = {}) {
   const hasPage = Number.isInteger(limit);
-  const rows = status
-    ? db
-        .prepare(
-          `SELECT * FROM subscriptions WHERE status = ? ORDER BY created_at DESC` +
-            (hasPage ? ` LIMIT ? OFFSET ?` : ``)
-        )
-        .all(...(hasPage ? [status, limit, offset || 0] : [status]))
-    : db
-        .prepare(`SELECT * FROM subscriptions ORDER BY created_at DESC` + (hasPage ? ` LIMIT ? OFFSET ?` : ``))
-        .all(...(hasPage ? [limit, offset || 0] : []));
+  const { where, params } = buildSubscriptionSearchClause({ status, q });
+  const sql =
+    `SELECT s.* FROM subscriptions s
+     LEFT JOIN subscribers sub ON sub.id = s.subscriber_id
+     LEFT JOIN offers o ON o.id = s.offer_id
+     ${where}
+     ORDER BY s.created_at DESC` + (hasPage ? ` LIMIT ? OFFSET ?` : ``);
+  const rows = db.prepare(sql).all(...params, ...(hasPage ? [limit, offset || 0] : []));
   return rows.map(rowToSubscription).map(attachRelations);
 }
 
-function countSubscriptions({ status } = {}) {
-  const row = status
-    ? db.prepare(`SELECT COUNT(*) as count FROM subscriptions WHERE status = ?`).get(status)
-    : db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get();
-  return row.count;
+function countSubscriptions({ status, q } = {}) {
+  const { where, params } = buildSubscriptionSearchClause({ status, q });
+  const sql = `SELECT COUNT(*) as count FROM subscriptions s
+     LEFT JOIN subscribers sub ON sub.id = s.subscriber_id
+     LEFT JOIN offers o ON o.id = s.offer_id
+     ${where}`;
+  return db.prepare(sql).get(...params).count;
 }
 
 // Mobile app's "my subscriptions" history - identified by the investor's
