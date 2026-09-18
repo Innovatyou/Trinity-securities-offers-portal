@@ -155,8 +155,10 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
 
   const {
     bvn,
-    contactDestination,
+    email,
+    phone,
     trinityAccountId,
+    cscsAccountId,
     isForMinor,
     minorNin,
     numberOfShares,
@@ -168,9 +170,10 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
     return res.status(400).json({ error: "You must accept the offer documents to continue." });
   }
 
-  const contact = (contactDestination || "").trim();
-  if (!contact) {
-    return res.status(400).json({ error: "Enter your email or phone number." });
+  const trimmedEmail = (email || "").trim();
+  const trimmedPhone = (phone || "").trim();
+  if (!trimmedEmail || !EMAIL_RE.test(trimmedEmail)) {
+    return res.status(400).json({ error: "Enter a valid email address." });
   }
 
   const bvnResult = await verifyBVN((bvn || "").trim());
@@ -215,9 +218,10 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
   const subscriber = db.upsertSubscriberByBvn({
     bvn: (bvn || "").trim(),
     fullName: bvnResult.fullName,
-    email: EMAIL_RE.test(contact) ? contact : null,
-    phone: EMAIL_RE.test(contact) ? null : contact,
+    email: trimmedEmail,
+    phone: trimmedPhone || null,
     trinityAccountId: (trinityAccountId || "").trim() || null,
+    cscsAccountId: (cscsAccountId || "").trim() || null,
   });
 
   const subscription = db.createSubscription({
