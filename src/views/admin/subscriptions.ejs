@@ -8,8 +8,8 @@
 <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
   <div class="flex items-center gap-2 text-sm flex-wrap">
     <a href="/admin/subscriptions<%= q ? '?q=' + encodeURIComponent(q) : '' %>" class="px-3 py-1.5 rounded-lg <%= !statusFilter ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>">All</a>
-    <% ["PAYMENT_REPORTED", "CONFIRMED", "AWAITING_PAYMENT", "REJECTED"].forEach(function(s) { %>
-      <a href="/admin/subscriptions?status=<%= s %><%= q ? '&q=' + encodeURIComponent(q) : '' %>" class="px-3 py-1.5 rounded-lg <%= statusFilter === s ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>"><%= s.replace('_', ' ') %></a>
+    <% ["SENT_TO_NGX", "PAYMENT_REPORTED", "CONFIRMED", "AWAITING_PAYMENT", "REJECTED"].forEach(function(s) { %>
+      <a href="/admin/subscriptions?status=<%= s %><%= q ? '&q=' + encodeURIComponent(q) : '' %>" class="px-3 py-1.5 rounded-lg <%= statusFilter === s ? 'bg-navy-700 text-white' : 'bg-white border border-navy-100' %>"><%= s.replace(/_/g, ' ') %></a>
     <% }) %>
   </div>
   <div class="flex items-center gap-2 flex-wrap">
@@ -78,7 +78,7 @@
           <td class="px-4 py-3">
             <span class="text-xs font-semibold px-2 py-1 rounded-full
               <%= sub.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : sub.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
-              <%= sub.status.replace('_', ' ') %>
+              <%= sub.status.replace(/_/g, ' ') %>
             </span>
             <% if (sub.status === 'CONFIRMED') { %>
               <span class="block text-[11px] mt-1 <%= (sub.allottedShares !== null && sub.allottedShares !== undefined) ? 'text-emerald-600 font-semibold' : 'text-navy-300' %>">
@@ -88,7 +88,7 @@
           </td>
           <% if (showActionsColumn) { %>
           <td class="px-4 py-3 text-right whitespace-nowrap space-x-2">
-            <% if (canConfirm && sub.status === 'PAYMENT_REPORTED') { %>
+            <% if (canConfirm && (sub.status === 'PAYMENT_REPORTED' || sub.status === 'SENT_TO_NGX')) { %>
               <form action="/admin/subscriptions/<%= sub.id %>/confirm" method="POST" class="inline">
                 <button class="font-semibold text-emerald-600 hover:underline">Confirm</button>
               </form>

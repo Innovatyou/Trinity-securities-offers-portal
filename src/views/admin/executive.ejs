@@ -12,7 +12,7 @@
 </div>
 
 <div class="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-8">
-  <% const statLabels = { STARTED: "Started", ACCOUNT_VERIFIED: "Verified", AWAITING_PAYMENT: "Awaiting Payment", PAYMENT_REPORTED: "Payment Reported", CONFIRMED: "Confirmed", REJECTED: "Rejected" }; %>
+  <% const statLabels = { STARTED: "Started", ACCOUNT_VERIFIED: "Verified", SENT_TO_NGX: "Sent to NGX", AWAITING_PAYMENT: "Awaiting Payment", PAYMENT_REPORTED: "Payment Reported", CONFIRMED: "Confirmed", REJECTED: "Rejected" }; %>
   <% Object.entries(statLabels).forEach(function([key, label]) { %>
     <div class="bg-white rounded-xl border border-navy-100 p-4">
       <div class="text-xl font-extrabold text-navy-800"><%= counts[key] || 0 %></div>

@@ -1,7 +1,6 @@
 const express = require("express");
 const db = require("../db");
 const { generateSubscriptionReference } = require("../services/reference");
-const { ngxApplyUrl } = require("../services/ngx");
 
 const router = express.Router();
 
@@ -32,19 +31,13 @@ router.get("/offers/:offerId", (req, res) => {
   res.render("offer", { title: offer.name, offer });
 });
 
-// Start a new subscription for an offer, then send the subscriber into the 3-step flow
+// Start a new subscription for an offer, then send the subscriber to enter their details
+// (see subscribe.js - with NGX_APPLY_URL set, that form ends by handing them over to NGX)
 router.post("/offers/:offerId/start", (req, res) => {
   const offer = db.getOfferById(req.params.offerId);
   if (!offer || offer.status !== "OPEN") {
     req.flash("error", "This offer is not currently open for subscription.");
     return res.redirect("/");
-  }
-
-  // NGX requires applications to go through its own portal, so a stale form
-  // or bookmarked POST doesn't quietly start an in-house subscription.
-  const applyUrl = ngxApplyUrl();
-  if (applyUrl) {
-    return res.redirect(applyUrl);
   }
 
   const subscription = db.createSubscription({

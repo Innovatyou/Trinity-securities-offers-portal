@@ -200,6 +200,12 @@ if (!subscriptionColumns.includes("allotted_shares")) {
 if (!subscriptionColumns.includes("allotted_at")) {
   db.exec(`ALTER TABLE subscriptions ADD COLUMN allotted_at TEXT`);
 }
+// When the investor was handed over to NGX's portal to choose their shares and
+// pay (status SENT_TO_NGX) - NGX takes the application from there, so this is
+// the last step our own back office sees happen on its own.
+if (!subscriptionColumns.includes("ngx_redirected_at")) {
+  db.exec(`ALTER TABLE subscriptions ADD COLUMN ngx_redirected_at TEXT`);
+}
 
 function genId() {
   return crypto.randomUUID();
@@ -283,6 +289,7 @@ function rowToSubscription(row) {
     confirmedBy: row.confirmed_by,
     allottedShares: row.allotted_shares,
     allottedAt: row.allotted_at ? new Date(row.allotted_at) : null,
+    ngxRedirectedAt: row.ngx_redirected_at ? new Date(row.ngx_redirected_at) : null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     // populated by attachRelations()
@@ -515,6 +522,10 @@ function updateSubscription(id, data) {
       data.allottedShares !== undefined ? data.allottedShares : current.allotted_shares,
     allotted_at:
       data.allottedAt !== undefined ? data.allottedAt && data.allottedAt.toISOString() : current.allotted_at,
+    ngx_redirected_at:
+      data.ngxRedirectedAt !== undefined
+        ? data.ngxRedirectedAt && data.ngxRedirectedAt.toISOString()
+        : current.ngx_redirected_at,
     updated_at: now(),
   };
 
@@ -525,7 +536,8 @@ function updateSubscription(id, data) {
       payment_method = @payment_method,
       status = @status, consent_accepted_at = @consent_accepted_at, transfer_reported_at = @transfer_reported_at,
       confirmed_at = @confirmed_at, confirmed_by = @confirmed_by,
-      allotted_shares = @allotted_shares, allotted_at = @allotted_at, updated_at = @updated_at
+      allotted_shares = @allotted_shares, allotted_at = @allotted_at,
+      ngx_redirected_at = @ngx_redirected_at, updated_at = @updated_at
      WHERE id = @id`
   ).run({ ...merged, id });
 

@@ -41,15 +41,33 @@ small file, so you can wire in real providers without touching the rest of the a
 ## Applications go through NGX
 
 NGX requires every customer to apply through its own portal, `https://trinity.ngxgroup.org`
-(its "Invest Now" flow). While `NGX_APPLY_URL` is set - it defaults to that URL - the web offer
-page shows an **Apply on NGX Portal** button instead of the in-house form, `POST /offers/:id/start`
-redirects there, `GET /api/offers` and `GET /api/offers/:id` include it as `applyUrl` for the
-mobile app, and `POST /api/offers/:id/subscribe` refuses new in-app applications. Existing
-subscriptions can still be paid, tracked and reconciled. Set `NGX_APPLY_URL=""` to switch back
-to the in-house Account -> Participation flow.
+(its "Invest Now" flow). While `NGX_APPLY_URL` is set - it defaults to that URL - the investor
+first enters their details here, and only then is sent to NGX:
 
-NGX's page has no deep link to a specific offer, so the web button opens their offer list. The
-mobile app hosts the page in a WebView and opens the matching offer's modal itself.
+1. **Details** - the offer page's *Get Started* opens the details form: BVN (verified), email,
+   phone, Trinity and CSCS account IDs, self or minor, referral code, and consent to the offer
+   documents. Its button is **Invest Now**.
+2. **Hand-off** - Invest Now saves everything as a subscription with status `SENT_TO_NGX` (and a
+   `ngx_redirected_at` time), then redirects to NGX. Someone who comes back for the same offer
+   is sent to NGX again without a second record; the hand-off page shows their reference.
+3. **Back office** - `SENT TO NGX` is a filter tab on Admin > Subscriptions and a step on the
+   dashboards. Payment and share choice happen on NGX, so once staff have verified the payment
+   there they **Edit** the subscription to enter the shares bought, then **Confirm** (or
+   **Reject**); Confirm is refused until a share count exists. Allotment and receipts work as
+   before.
+
+The mobile app does the same through `POST /api/offers/:id/subscribe` **without** a
+`numberOfShares` (that omission is what marks it as an NGX hand-off): it returns the saved
+subscription plus `applyUrl`, and an investor who was already sent gets their existing record
+back (200) rather than an error. `GET /api/offers` and `/api/offers/:id` carry `applyUrl`. Older
+app builds still send a share count and are refused with the NGX link in the error message.
+
+Existing bank-transfer subscriptions can still be paid, tracked and reconciled. Set
+`NGX_APPLY_URL=""` to switch everything back to the in-house Account -> Participation flow.
+
+NGX's page has no deep link to a specific offer, so after the hand-off the web investor lands on
+NGX's offer list and taps Invest Now there. The mobile app hosts the page in a WebView and
+opens the matching offer's modal itself.
 
 ## A security note on the "pay with platform credentials" pattern
 

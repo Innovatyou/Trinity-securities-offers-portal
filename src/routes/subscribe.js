@@ -2,6 +2,7 @@ const express = require("express");
 const db = require("../db");
 const { loadSubscription } = require("../middleware/subscriptionFlow");
 const { notifySubscriber, notifyStaff } = require("../services/notifications");
+const { ngxApplyUrl } = require("../services/ngx");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,6 +19,40 @@ router.use((req, res, next) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.set("Pragma", "no-cache");
   next();
+});
+
+// With NGX_APPLY_URL set, the details form below ends by handing the investor
+// over to NGX and marking the subscription SENT_TO_NGX. There is nothing left
+// to do here after that, so any step of this flow (a back button, a resubmitted
+// form) just shows the hand-off page again with a way back to NGX - rather than
+// falling through to loadSubscription(), which doesn't know that status.
+router.use((req, res, next) => {
+  const subscriptionId = req.session.subscriptionId;
+  if (!subscriptionId) return next();
+
+  const subscription = db.getSubscriptionById(subscriptionId);
+  if (!subscription || subscription.offerId !== req.params.offerId || subscription.status !== "SENT_TO_NGX") {
+    return next();
+  }
+
+  const applyUrl = ngxApplyUrl();
+  if (!applyUrl) {
+    req.flash(
+      "error",
+      `Your application (ref. ${subscription.reference}) was sent to NGX. Please contact Trinity Securities ` +
+        `Limited if you need help with it.`
+    );
+    return res.redirect(`/offers/${req.params.offerId}`);
+  }
+
+  res.render("subscribe/ngx-handoff", {
+    title: "Continue on NGX",
+    offer: subscription.offer,
+    subscription,
+    applyUrl,
+    layout: "subscribe-layout",
+    step: 2,
+  });
 });
 
 const STATUS_ORDER = [
@@ -67,11 +102,19 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
   const { subscription } = req;
   const { subscriptionFor, bvn } = req.body;
   const isForMinor = subscriptionFor === "minor";
+  const applyUrl = ngxApplyUrl();
 
   const email = (req.body.email || "").trim();
   const phone = (req.body.phone || "").trim();
   if (!email || !EMAIL_RE.test(email)) {
     req.flash("error", "Enter a valid email address.");
+    return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
+  }
+
+  // NGX takes the application from here, so the consent that used to be given
+  // on the Participation step is given on this form, before "Invest Now".
+  if (applyUrl && req.body.consent !== "on") {
+    req.flash("error", "Please confirm you have read and accept the offer documents.");
     return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
   }
 
@@ -81,6 +124,15 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     return res.redirect(`/offers/${req.params.offerId}/subscribe/account`);
   }
 
+  const subscriberFields = {
+    bvn: verifiedBvn.value,
+    fullName: verifiedBvn.fullName,
+    email,
+    phone: phone || null,
+    trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
+    cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
+  };
+
   // One application per offer per investor - a rejected one doesn't count,
   // everything else (in progress, awaiting payment, reported, confirmed) does.
   const duplicate = db.findOtherActiveSubscriptionForBvnAndOffer(
@@ -88,6 +140,17 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     req.params.offerId,
     subscription.id
   );
+  if (duplicate && applyUrl && duplicate.status === "SENT_TO_NGX") {
+    // Already handed over to NGX - they likely closed the tab before paying.
+    // Send them back rather than blocking them, without leaving a second record:
+    // refresh their contact details on the existing one and drop this empty one.
+    db.upsertSubscriberByBvn(subscriberFields);
+    db.deleteSubscription(subscription.id);
+    req.session.subscriptionId = duplicate.id;
+    req.session.verifiedBvn = null;
+    req.session.verifiedNin = null;
+    return res.redirect(applyUrl);
+  }
   if (duplicate) {
     req.flash(
       "error",
@@ -111,14 +174,24 @@ router.post("/account", loadSubscription(0, STATUS_ORDER), (req, res) => {
     minorId = minor.id;
   }
 
-  const subscriber = db.upsertSubscriberByBvn({
-    bvn: verifiedBvn.value,
-    fullName: verifiedBvn.fullName,
-    email,
-    phone: phone || null,
-    trinityAccountId: (req.body.trinityAccountId || "").trim() || null,
-    cscsAccountId: (req.body.cscsAccountId || "").trim() || null,
-  });
+  const subscriber = db.upsertSubscriberByBvn(subscriberFields);
+
+  if (applyUrl) {
+    // Details collected: record the hand-over so the back office can follow the
+    // application to NGX, then send the investor there.
+    const handedOverAt = new Date();
+    db.updateSubscription(subscription.id, {
+      subscriberId: subscriber.id,
+      isForMinor,
+      minorId,
+      status: "SENT_TO_NGX",
+      consentAcceptedAt: handedOverAt,
+      ngxRedirectedAt: handedOverAt,
+    });
+    req.session.verifiedBvn = null;
+    req.session.verifiedNin = null;
+    return res.redirect(applyUrl);
+  }
 
   db.updateSubscription(subscription.id, {
     subscriberId: subscriber.id,

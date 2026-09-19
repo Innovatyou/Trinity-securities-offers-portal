@@ -147,6 +147,9 @@ function subscriptionToPublicJson(sub) {
     confirmedAt: sub.confirmedAt,
     allottedShares: sub.allottedShares ?? null,
     allottedAt: sub.allottedAt,
+    ngxRedirectedAt: sub.ngxRedirectedAt,
+    // Lets History offer "continue on NGX" for an application still waiting there.
+    applyUrl: sub.status === "SENT_TO_NGX" ? ngxApplyUrl() : null,
     bank: sub.status === "AWAITING_PAYMENT" ? bankDetails() : null,
   };
 }
@@ -157,10 +160,15 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
     return res.status(400).json({ error: "This offer is not currently open for subscription." });
   }
 
-  // Older app builds still call this endpoint directly; surface the NGX link in
-  // the error they already display instead of starting an in-app subscription.
+  // With NGX taking applications, this endpoint only records the investor's
+  // details and hands back the NGX link - the share count and payment happen on
+  // NGX. Older app builds still send a share count and expect bank details back
+  // for a payment screen, so they get the NGX link in the error they already
+  // display instead of a subscription they can't finish.
   const applyUrl = ngxApplyUrl();
-  if (applyUrl) {
+  const sendsShares =
+    req.body.numberOfShares !== undefined && req.body.numberOfShares !== null && req.body.numberOfShares !== "";
+  if (applyUrl && sendsShares) {
     return res.status(400).json({
       error: `Applications for this offer are made on the NGX portal: ${applyUrl}`,
       applyUrl,
@@ -195,10 +203,25 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
     return res.status(400).json({ error: bvnResult.message || "BVN verification failed." });
   }
 
+  const subscriberFields = {
+    bvn: (bvn || "").trim(),
+    fullName: bvnResult.fullName,
+    email: trimmedEmail,
+    phone: trimmedPhone || null,
+    trinityAccountId: (trinityAccountId || "").trim() || null,
+    cscsAccountId: (cscsAccountId || "").trim() || null,
+  };
+
   // Same one-application-per-offer guard as the web flow (see subscribe.js's
   // POST /account) - the app collects everything in one call, so this is the
   // earliest point identity is known here too.
   const duplicate = db.findOtherActiveSubscriptionForBvnAndOffer((bvn || "").trim(), offer.id);
+  if (duplicate && applyUrl && duplicate.status === "SENT_TO_NGX") {
+    // Already handed over to NGX (likely closed before paying): let them carry
+    // on there instead of blocking them or leaving a second record.
+    db.upsertSubscriberByBvn(subscriberFields);
+    return res.json({ subscription: subscriptionToPublicJson(duplicate), applyUrl });
+  }
   if (duplicate) {
     return res.status(400).json({
       error:
@@ -217,6 +240,25 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
     minorId = db.createMinor({ nin: (minorNin || "").trim(), fullName: ninResult.fullName }).id;
   }
 
+  if (applyUrl) {
+    const subscriber = db.upsertSubscriberByBvn(subscriberFields);
+    const subscription = db.createSubscription({
+      offerId: offer.id,
+      reference: generateSubscriptionReference(),
+      referralCode: (referralCode || "").trim() || null,
+    });
+    const handedOverAt = new Date();
+    const updated = db.updateSubscription(subscription.id, {
+      subscriberId: subscriber.id,
+      isForMinor: Boolean(isForMinor),
+      minorId,
+      status: "SENT_TO_NGX",
+      consentAcceptedAt: handedOverAt,
+      ngxRedirectedAt: handedOverAt,
+    });
+    return res.status(201).json({ subscription: subscriptionToPublicJson(updated), applyUrl });
+  }
+
   const shares = parseInt(numberOfShares, 10);
   if (
     !Number.isInteger(shares) ||
@@ -229,14 +271,7 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
     });
   }
 
-  const subscriber = db.upsertSubscriberByBvn({
-    bvn: (bvn || "").trim(),
-    fullName: bvnResult.fullName,
-    email: trimmedEmail,
-    phone: trimmedPhone || null,
-    trinityAccountId: (trinityAccountId || "").trim() || null,
-    cscsAccountId: (cscsAccountId || "").trim() || null,
-  });
+  const subscriber = db.upsertSubscriberByBvn(subscriberFields);
 
   const subscription = db.createSubscription({
     offerId: offer.id,

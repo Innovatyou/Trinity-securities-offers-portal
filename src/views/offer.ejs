@@ -25,28 +25,6 @@
 
   <hr class="border-navy-100 mb-8" />
 
-  <% if (ngxApplyUrl) { %>
-    <%# NGX requires all applications to go through its own portal, so there is no in-house form (or referral code field) to fill in here. %>
-    <div class="text-left max-w-md mx-auto">
-      <% if (offer.status !== 'OPEN') { %>
-        <button type="button" disabled class="w-full bg-slate-200 text-slate-500 font-bold py-3.5 rounded-xl cursor-not-allowed">
-          Subscription not yet open
-        </button>
-      <% } else { %>
-        <a href="<%= ngxApplyUrl %>" target="_blank" rel="noopener" class="block w-full text-center bg-navy-700 hover:bg-navy-800 text-white font-bold py-3.5 rounded-xl transition">
-          Apply on NGX Portal
-        </a>
-        <p class="text-xs text-navy-400 text-center mt-3">
-          Applications for this offer are made on the NGX portal, which opens in a new tab.
-        </p>
-      <% } %>
-
-      <p class="text-xs text-navy-400 text-center mt-4">
-        Don't have a Trinity Securities account?
-        <a href="https://www.tradewithtrinity.com/IW/NewAccount" target="_blank" rel="noopener" class="font-semibold text-navy-600 underline hover:text-navy-800">Open one online</a>
-      </p>
-    </div>
-  <% } else { %>
   <form action="/offers/<%= offer.id %>/start" method="POST" class="text-left max-w-md mx-auto">
     <label class="block text-sm font-semibold text-navy-700 mb-1">
       Referral Code <span class="text-navy-400 font-normal">(<%= offer.referralRequired ? "required" : "optional" %>)</span>
@@ -65,8 +43,13 @@
       </button>
     <% } else { %>
       <button type="submit" class="w-full bg-navy-700 hover:bg-navy-800 text-white font-bold py-3.5 rounded-xl transition">
-        Start Subscription
+        <%= ngxApplyUrl ? "Get Started" : "Start Subscription" %>
       </button>
+      <% if (ngxApplyUrl) { %>
+        <p class="text-xs text-navy-400 text-center mt-3">
+          Enter your details first, then continue to the NGX portal to choose your shares and pay.
+        </p>
+      <% } %>
     <% } %>
 
     <p class="text-xs text-navy-400 text-center mt-4">
@@ -74,5 +57,4 @@
       <a href="https://www.tradewithtrinity.com/IW/NewAccount" target="_blank" rel="noopener" class="font-semibold text-navy-600 underline hover:text-navy-800">Open one online</a>
     </p>
   </form>
-  <% } %>
 </div>

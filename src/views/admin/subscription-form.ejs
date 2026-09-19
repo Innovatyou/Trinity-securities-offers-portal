@@ -97,7 +97,7 @@
   </div>
   <% } else { %>
   <p class="text-xs text-navy-400">
-    Status (currently <strong><%= sub.status.replace('_', ' ') %></strong>) isn't changed here - use Confirm/Reject on the Subscriptions list.
+    Status (currently <strong><%= sub.status.replace(/_/g, ' ') %></strong>) isn't changed here - use Confirm/Reject on the Subscriptions list.
   </p>
   <% } %>
 

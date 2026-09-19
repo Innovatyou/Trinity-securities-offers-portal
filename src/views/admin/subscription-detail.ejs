@@ -15,7 +15,7 @@
       <h2 class="font-mono text-lg font-bold text-navy-800"><%= sub.reference %></h2>
       <span class="text-xs font-semibold px-2 py-1 rounded-full
         <%= sub.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : sub.status === 'REJECTED' ? 'bg-red-50 text-red-600' : 'bg-gold-50 text-gold-600' %>">
-        <%= sub.status.replace('_', ' ') %>
+        <%= sub.status.replace(/_/g, ' ') %>
       </span>
       <% if (sub.status === 'CONFIRMED') { %>
         <span class="text-xs font-semibold px-2 py-1 rounded-full <%= isAllotted ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500' %>">
@@ -26,7 +26,7 @@
     <p class="text-sm text-navy-400 mt-1">Created <%= sub.createdAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
   </div>
   <div class="flex items-center gap-2 flex-wrap">
-    <% if (canConfirm && sub.status === 'PAYMENT_REPORTED') { %>
+    <% if (canConfirm && (sub.status === 'PAYMENT_REPORTED' || sub.status === 'SENT_TO_NGX')) { %>
       <form action="/admin/subscriptions/<%= sub.id %>/confirm" method="POST" class="inline">
         <button class="text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg">Confirm</button>
       </form>
@@ -52,6 +52,15 @@
     <% } %>
   </div>
 </div>
+
+<% if (sub.status === 'SENT_TO_NGX') { %>
+<div class="rounded-xl border border-gold-100 bg-gold-50 p-4 mb-5 text-sm text-navy-700">
+  <strong>Sent to NGX<%= sub.ngxRedirectedAt ? ' on ' + sub.ngxRedirectedAt.toLocaleString('en-GB') : '' %>.</strong>
+  This investor gave their details here and was sent to the NGX portal to choose their shares and pay.
+  Once you have verified their payment on NGX, use <strong>Edit</strong> to enter the number of shares they bought,
+  then <strong>Confirm</strong> (or <strong>Reject</strong> if they did not complete it).
+</div>
+<% } %>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
   <div class="bg-white rounded-xl border border-navy-100 p-6">
@@ -87,6 +96,7 @@
     <h4 class="text-xs font-bold uppercase tracking-wide text-navy-400 mt-6 mb-3">Timeline</h4>
     <dl class="space-y-3 text-sm">
       <div class="flex justify-between gap-3"><dt class="text-navy-400">Consent Accepted</dt><dd class="text-navy-700 text-right"><%= sub.consentAcceptedAt ? sub.consentAcceptedAt.toLocaleString('en-GB') : '-' %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-navy-400">Sent to NGX</dt><dd class="text-navy-700 text-right"><%= sub.ngxRedirectedAt ? sub.ngxRedirectedAt.toLocaleString('en-GB') : '-' %></dd></div>
       <div class="flex justify-between gap-3"><dt class="text-navy-400">Payment Reported</dt><dd class="text-navy-700 text-right"><%= sub.transferReportedAt ? sub.transferReportedAt.toLocaleString('en-GB') : '-' %></dd></div>
       <div class="flex justify-between gap-3"><dt class="text-navy-400">Confirmed</dt><dd class="text-navy-700 text-right"><%= sub.confirmedAt ? sub.confirmedAt.toLocaleString('en-GB') : '-' %><%= sub.confirmedBy ? ` by ${sub.confirmedBy}` : '' %></dd></div>
     </dl>

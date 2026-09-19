@@ -547,6 +547,7 @@ router.get("/subscriptions/export.csv", requireAdmin, (req, res) => {
     "paymentMethod",
     "referralCode",
     "consentAcceptedAt",
+    "ngxRedirectedAt",
     "transferReportedAt",
     "confirmedAt",
     "confirmedBy",
@@ -572,6 +573,7 @@ router.get("/subscriptions/export.csv", requireAdmin, (req, res) => {
       paymentMethod: sub.paymentMethod,
       referralCode: sub.referralCode,
       consentAcceptedAt: sub.consentAcceptedAt ? sub.consentAcceptedAt.toISOString() : "",
+      ngxRedirectedAt: sub.ngxRedirectedAt ? sub.ngxRedirectedAt.toISOString() : "",
       transferReportedAt: sub.transferReportedAt ? sub.transferReportedAt.toISOString() : "",
       confirmedAt: sub.confirmedAt ? sub.confirmedAt.toISOString() : "",
       confirmedBy: sub.confirmedBy,
@@ -780,6 +782,21 @@ router.post("/subscriptions/:id", requireAdmin, requirePermission("edit_delete_s
 });
 
 router.post("/subscriptions/:id/confirm", requireAdmin, requirePermission("confirm_payment"), async (req, res) => {
+  const existing = db.getSubscriptionById(req.params.id);
+  if (!existing) {
+    req.flash("error", "Subscription not found.");
+    return res.redirect("/admin/subscriptions");
+  }
+  // An application handed over to NGX has no share count of its own (the
+  // investor chooses it there), so it must be entered from what was verified on
+  // NGX before it can be confirmed - the confirmation email and receipt need it.
+  if (!existing.numberOfShares) {
+    req.flash(
+      "error",
+      "Enter the number of shares this investor bought on NGX (use Edit) before confirming."
+    );
+    return res.redirect(`/admin/subscriptions/${existing.id}`);
+  }
   const subscription = db.updateSubscription(req.params.id, {
     status: "CONFIRMED",
     confirmedAt: new Date(),
