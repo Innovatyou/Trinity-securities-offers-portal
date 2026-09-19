@@ -38,6 +38,19 @@ small file, so you can wire in real providers without touching the rest of the a
 | Payment | Bank transfer only | Subscribers transfer to the **static** account in `.env` (`BANK_NAME` / `BANK_ACCOUNT_NUMBER` / `BANK_ACCOUNT_NAME`) and quote a unique reference (`TSL-XXXXXXXX`) as narration; an admin manually confirms once the transfer lands and reconciles by reference + amount. A card/online-payment option (e.g. Paystack) or a real bank webhook can replace the manual "I've Made the Transfer" step later. |
 | "Pay with [trading platform]" login | Not included | The reference screenshots show a second option that submits a username/password for the broker's own trading platform. That pattern is worth avoiding even once InfoWARE/Trinity's platform is ready — see note below. |
 
+## Applications go through NGX
+
+NGX requires every customer to apply through its own portal, `https://trinity.ngxgroup.org`
+(its "Invest Now" flow). While `NGX_APPLY_URL` is set - it defaults to that URL - the web offer
+page shows an **Apply on NGX Portal** button instead of the in-house form, `POST /offers/:id/start`
+redirects there, `GET /api/offers` and `GET /api/offers/:id` include it as `applyUrl` for the
+mobile app, and `POST /api/offers/:id/subscribe` refuses new in-app applications. Existing
+subscriptions can still be paid, tracked and reconciled. Set `NGX_APPLY_URL=""` to switch back
+to the in-house Account -> Participation flow.
+
+NGX's page has no deep link to a specific offer, so the web button opens their offer list. The
+mobile app hosts the page in a WebView and opens the matching offer's modal itself.
+
 ## A security note on the "pay with platform credentials" pattern
 
 The reference design includes a screen asking subscribers to type their trading-platform

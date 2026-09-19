@@ -10,6 +10,7 @@ const publicRoutes = require("./routes/public");
 const subscribeRoutes = require("./routes/subscribe");
 const adminRoutes = require("./routes/admin");
 const apiRoutes = require("./routes/api");
+const { ngxApplyUrl } = require("./services/ngx");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use((req, res, next) => {
   res.locals.successMessages = req.flash("success");
   res.locals.errorMessages = req.flash("error");
   res.locals.currentPath = req.path;
+  res.locals.ngxApplyUrl = ngxApplyUrl();
   res.locals.brand = {
     name: "Trinity Securities Limited",
     portalName: "Offers Portal",

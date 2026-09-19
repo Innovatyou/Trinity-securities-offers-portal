@@ -3,6 +3,7 @@ const db = require("../db");
 const { verifyBVN, verifyNIN } = require("../services/verification");
 const { generateSubscriptionReference } = require("../services/reference");
 const { notifySubscriber, notifyStaff, notifyEmail } = require("../services/notifications");
+const { ngxApplyUrl } = require("../services/ngx");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,8 +19,11 @@ router.use(["/offers", "/offers/:offerId"], (req, res, next) => {
   next();
 });
 
+// applyUrl is where the app should send the customer to apply (NGX's portal),
+// or null when applications are handled by the in-app flow below.
 router.get("/offers", (req, res) => {
-  const offers = db.listOffers({ statuses: ["OPEN", "DRAFT"] });
+  const applyUrl = ngxApplyUrl();
+  const offers = db.listOffers({ statuses: ["OPEN", "DRAFT"] }).map((offer) => ({ ...offer, applyUrl }));
   res.json({ offers });
 });
 
@@ -28,7 +32,7 @@ router.get("/offers/:offerId", (req, res) => {
   if (!offer) {
     return res.status(404).json({ error: "Offer not found" });
   }
-  res.json({ offer });
+  res.json({ offer: { ...offer, applyUrl: ngxApplyUrl() } });
 });
 
 // Public read-only News/Analysis, Recommendations, and Adverts feeds for the
@@ -151,6 +155,16 @@ router.post("/offers/:offerId/subscribe", async (req, res) => {
   const offer = db.getOfferById(req.params.offerId);
   if (!offer || offer.status !== "OPEN") {
     return res.status(400).json({ error: "This offer is not currently open for subscription." });
+  }
+
+  // Older app builds still call this endpoint directly; surface the NGX link in
+  // the error they already display instead of starting an in-app subscription.
+  const applyUrl = ngxApplyUrl();
+  if (applyUrl) {
+    return res.status(400).json({
+      error: `Applications for this offer are made on the NGX portal: ${applyUrl}`,
+      applyUrl,
+    });
   }
 
   const {
